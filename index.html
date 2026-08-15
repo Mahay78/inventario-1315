@@ -1,6 +1,10 @@
 <html lang="es" data-theme="light"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310b981'/%3E%3Crect x='14' y='8' width='4' height='16' fill='white'/%3E%3Crect x='8' y='14' width='16' height='4' fill='white'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
     <title>Inventario SVB · Pro</title>
     <style>
         /* ============================================================
@@ -466,6 +470,78 @@
             --shadow:        0 10px 30px rgba(0, 0, 0, .45);
             --shadow-soft:   0 4px 14px rgba(0, 0, 0, .35);
         }
+
+        /* ============================================================
+           MEJORAS VISUALES
+           ============================================================ */
+        .topbar__logo svg { display: block; }
+
+        /* Foco accesible */
+        button:focus-visible, input:focus-visible, select:focus-visible,
+        .mini:focus-visible, .chip:focus-visible, .act:focus-visible, .search__clear:focus-visible {
+            outline: 2px solid var(--accent); outline-offset: 2px;
+        }
+
+        /* Transición suave de tema */
+        body, .topbar, .meta, .kpi, .item, .category__head, .search, .chip,
+        .panel, .dockbar, .notice, table.inv, .mo-row, .mo-add input {
+            transition: background-color .3s ease, color .3s ease, border-color .3s ease;
+        }
+
+        /* Color por categoría */
+        .category__icon { background: color-mix(in srgb, var(--cat, var(--accent)) 20%, var(--surface)); color: var(--cat, var(--accent)); }
+        .category__head { border-left: 4px solid var(--cat, var(--border)); }
+        .item { border-left: 4px solid var(--cat, var(--border)); }
+
+        /* Tabla: cabecera fija, zebra, hover y primera columna fija */
+        .table-view { overflow: visible; }
+        table.inv thead th { position: sticky; top: 66px; z-index: 6; }
+        table.inv thead th:first-child { position: sticky; left: 0; z-index: 7; border-top-left-radius: var(--radius-lg); }
+        table.inv thead th:last-child { border-top-right-radius: var(--radius-lg); }
+        table.inv tbody tr:last-child td:first-child { border-bottom-left-radius: var(--radius-lg); }
+        table.inv tbody tr:last-child td:last-child { border-bottom-right-radius: var(--radius-lg); }
+        table.inv th:first-child, table.inv td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 4; }
+        table.inv tbody tr.row-alt td { background: var(--surface-2); }
+        table.inv tbody tr.row-alt td:first-child { background: var(--surface-2); }
+        table.inv tbody tr:hover td { background: var(--surface-3); }
+        table.inv tbody tr:hover td:first-child { background: var(--surface-3); }
+        table.inv .cat-row td:first-child { background: var(--surface-2); }
+
+        /* Buscador: botón limpiar */
+        .search__clear { border: 0; background: transparent; color: var(--text-faint); font-size: 16px; cursor: pointer; padding: 0 6px; line-height: 1; border-radius: 8px; }
+        .search__clear:hover { color: var(--danger); }
+
+        /* Toggle vista Tarjetas / Tabla */
+        .viewtoggle { display: inline-flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px; margin: 0 0 14px; }
+        .viewtoggle button { border: 0; background: transparent; color: var(--text-soft); font: inherit; font-weight: 700; font-size: 13px; padding: 8px 16px; border-radius: 999px; cursor: pointer; }
+        .viewtoggle button.is-active { background: var(--primary); color: #04121a; }
+        body.view-cards .table-view { display: none !important; }
+        body.view-cards .cards-view { display: block !important; }
+        body.view-table .cards-view { display: none !important; }
+        body.view-table .table-view { display: block !important; }
+
+        /* Estado vacío */
+        .empty-state { text-align: center; color: var(--text-faint); padding: 28px 16px; font-weight: 600; }
+
+        /* Animaciones de alta/baja */
+        @keyframes pop { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+        .item.just-added { animation: pop .6s ease; }
+        @keyframes fadeOut { to { opacity: 0; transform: translateX(14px); } }
+        .item.removing { animation: fadeOut .2s ease forwards; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .item.just-added, .item.removing { animation: none; }
+            body, .topbar, .meta, .kpi, .item, .category__head, .search, .chip, .panel, .dockbar, .notice, table.inv, .mo-row, .mo-add input { transition: none; }
+        }
+
+        /* Impresión */
+        @media print {
+            .topbar, .dockbar, .search, .chipbar, .sortrow, .actions, .hero, .notice, .meta, .viewtoggle, .table-view__head, #mo-form, .overlay, .mo-add { display: none !important; }
+            body { background: #fff; }
+            .table-view { display: block !important; box-shadow: none; border: none; }
+            .cards-view { display: none !important; }
+            .kpi { break-inside: avoid; }
+        }
     </style>
 </head>
 <body>
@@ -473,7 +549,7 @@
     <!-- ==================== TOPBAR ==================== -->
     <header class="topbar">
         <div class="topbar__brand">
-            <div class="topbar__logo">🚑</div>
+            <div class="topbar__logo"><svg viewBox="0 0 24 24" width="24" height="24" fill="white" aria-hidden="true"><rect x="10" y="4" width="4" height="16" rx="1.2"/><rect x="4" y="10" width="16" height="4" rx="1.2"/></svg></div>
             <div class="topbar__titles">
                 <div class="topbar__title">Inventario SVB · Pro</div>
                 <div class="topbar__sub"><span class="status-dot"></span> Unidad 1315 · <span id="clock">16:42</span></div>
@@ -531,6 +607,7 @@
         <div class="search">
             <span>🔍</span>
             <input type="search" id="q" placeholder="Buscar material o categoría…">
+            <button type="button" class="search__clear" id="search-clear" title="Limpiar" onclick="clearSearch()">✕</button>
         </div>
 
         <!-- Filtros -->
@@ -541,6 +618,12 @@
             <button class="chip" data-f="low">🟦 Stock bajo <span class="chip__count" id="c-low">19</span></button>
             <button class="chip" data-f="need">🛒 Con pedido <span class="chip__count" id="c-need">20</span></button>
         </nav>
+
+        <!-- Vista: Tarjetas / Tabla -->
+        <div class="viewtoggle" id="viewtoggle">
+            <button type="button" data-v="cards" onclick="setView('cards')">🗂 Tarjetas</button>
+            <button type="button" data-v="table" onclick="setView('table')">▦ Tabla</button>
+        </div>
 
         <!-- Orden -->
         <div class="sortrow">
@@ -4049,6 +4132,28 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             low:     { label: 'Stock bajo',    icon: '🟦' },
             ok:      { label: 'OK',            icon: '✅' }
         };
+        const CAT_COLORS = {
+            'CURAS': '#10b981', 'CIRCULATORIO': '#0ea5e9', 'DIVERSOS': '#f59e0b',
+            'EPIS': '#8b5cf6', 'ARTICULOS VARIOS': '#ec4899', 'LIMPIEZA': '#14b8a6',
+            'no': '#64748b', 'Papelería': '#ef4444'
+        };
+        const catColor = c => CAT_COLORS[c] || '#64748b';
+
+        let firstRender = true;
+        function animateKPI(el, target, suffix) {
+            const dur = 600, start = performance.now();
+            function step(now) {
+                const t = Math.min(1, (now - start) / dur);
+                el.innerHTML = Math.round(target * t) + ' <small>' + suffix + '</small>';
+                if (t < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+        function highlightItem(idx) {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const node = document.querySelector(`#cards [data-idx="${idx}"], #tbl-body [data-idx="${idx}"]`);
+            if (node) { node.classList.add('just-added'); setTimeout(() => node.classList.remove('just-added'), 600); }
+        }
 
         // ============================================================
         //  RENDER
@@ -4087,10 +4192,18 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 else if (s === 'low') c.low++;
                 if (it.order > 0) { c.need++; c.units += it.order; }
             });
-            document.getElementById('kpi-total').innerHTML = c.total + ' <small>items</small>';
-            document.getElementById('kpi-expired').innerHTML = c.expired + ' <small>items</small>';
-            document.getElementById('kpi-soon').innerHTML = c.soon + ' <small>items</small>';
-            document.getElementById('kpi-order').innerHTML = c.units + ' <small>uds</small>';
+            if (firstRender) {
+                animateKPI(document.getElementById('kpi-total'), c.total, 'items');
+                animateKPI(document.getElementById('kpi-expired'), c.expired, 'items');
+                animateKPI(document.getElementById('kpi-soon'), c.soon, 'items');
+                animateKPI(document.getElementById('kpi-order'), c.units, 'uds');
+            } else {
+                document.getElementById('kpi-total').innerHTML = c.total + ' <small>items</small>';
+                document.getElementById('kpi-expired').innerHTML = c.expired + ' <small>items</small>';
+                document.getElementById('kpi-soon').innerHTML = c.soon + ' <small>items</small>';
+                document.getElementById('kpi-order').innerHTML = c.units + ' <small>uds</small>';
+            }
+            firstRender = false;
             document.getElementById('c-all').textContent = c.total;
             document.getElementById('c-expired').textContent = c.expired;
             document.getElementById('c-soon').textContent = c.soon;
@@ -4122,7 +4235,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             if (s === 'expired') row += ' item--danger'; else if (s === 'soon') row += ' item--warn'; else if (s === 'low') row += ' item--low';
 
             return `
-            <article class="${row}">
+            <article class="${row}" data-idx="${idx}">
                 <div class="item__top">
                     <div class="item__name">${escapeHtml(item.material)}
                         <div class="item__expiry ${exV.cls}">📅 ${exV.text}</div>
@@ -4158,8 +4271,10 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         }
 
         function renderCards(groups) {
-            document.getElementById('cards').innerHTML = groups.map(g => `
-                <section class="category is-open" data-cat="${escapeHtml(g.category)}">
+            const el = document.getElementById('cards');
+            if (!groups.length) { el.innerHTML = '<div class="empty-state">🔍 Sin resultados. Prueba con otra búsqueda o filtro.</div>'; return; }
+            el.innerHTML = groups.map(g => `
+                <section class="category is-open" data-cat="${escapeHtml(g.category)}" style="--cat:${catColor(g.category)}">
                     <button class="category__head" onclick="toggleCategory(this)">
                         <span class="category__icon">📦</span>
                         <span class="category__name">${escapeHtml(g.category)}</span>
@@ -4171,14 +4286,21 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         }
 
         function renderTable(groups) {
-            let html = '', totalUnits = 0;
+            let html = '', totalUnits = 0, ri = 0;
+            if (!groups.length) {
+                document.getElementById('tbl-body').innerHTML = '<tr><td colspan="7" class="empty-state">🔍 Sin resultados. Prueba con otra búsqueda o filtro.</td></tr>';
+                const total = appData.inventory.reduce((a, i) => a + (i.order > 0 ? i.order : 0), 0);
+                document.getElementById('tbl-count').textContent = `${appData.inventory.length} materiales · a pedir ${total} uds`;
+                return;
+            }
             groups.forEach(g => {
-                html += `<tr class="cat-row"><td colspan="7">📦  ${escapeHtml(g.category)}</td></tr>`;
+                const cc = catColor(g.category);
+                html += `<tr class="cat-row"><td colspan="7" style="color:${cc}">📦  ${escapeHtml(g.category)}</td></tr>`;
                 g.items.forEach(item => {
                     const idx = appData.inventory.indexOf(item);
                     const s = stateOf(item);
                     const exV = fmtDateSafe(parseDate(item.expiry));
-                    html += `<tr>
+                    html += `<tr data-idx="${idx}" class="${ri++ % 2 ? 'row-alt' : ''}">
                         <td><b>${escapeHtml(item.material)}</b></td>
                         <td class="num">${item.idealStock}</td>
                         <td>
@@ -4248,6 +4370,13 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
         function toggleCategory(btn) { btn.closest('.category').classList.toggle('is-open'); }
 
+        function clearSearch() { document.getElementById('q').value = ''; renderAll(); }
+        function setView(v) {
+            document.body.classList.remove('view-cards', 'view-table');
+            if (v) document.body.classList.add('view-' + v);
+            document.querySelectorAll('#viewtoggle button').forEach(b => b.classList.toggle('is-active', b.dataset.v === v));
+        }
+
         // ============================================================
         //  ACCIONES · CRUD
         // ============================================================
@@ -4263,9 +4392,11 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         function deleteItem(index) {
             const item = appData.inventory[index];
             if (confirm(`¿Eliminar "${item.material}"?`)) {
-                appData.inventory.splice(index, 1);
-                saveData(); renderAll();
-                toast('Material eliminado.', 'danger');
+                const finish = () => { appData.inventory.splice(index, 1); saveData(); renderAll(); toast('Material eliminado.', 'danger'); };
+                const node = document.querySelector(`#cards [data-idx="${index}"], #tbl-body [data-idx="${index}"]`);
+                if (node && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    node.classList.add('removing'); setTimeout(finish, 200);
+                } else finish();
             }
         }
 
@@ -4323,7 +4454,9 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 appData.inventory.push({ material, category, idealStock: ideal, currentStock: current, order: ideal - current, expiry });
                 toast('Material añadido.', 'success');
             }
+            const addedIdx = editIndex >= 0 ? editIndex : appData.inventory.length - 1;
             saveData(); renderAll(); closeModal();
+            highlightItem(addedIdx);
         }
 
         // ---- Pedido mensual ----
@@ -4559,6 +4692,8 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.deleteMonthlyItem = deleteMonthlyItem;
         window.setMonthlyQty = setMonthlyQty;
         window.toggleCategory = toggleCategory;
+        window.clearSearch = clearSearch;
+        window.setView = setView;
         window.backupData = backupData;
         window.exportToCSV = exportToCSV;
         window.downloadApp = downloadApp;
@@ -4569,6 +4704,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         loadData();
         setup();
         renderAll();
+        setView(window.innerWidth >= 1024 ? 'table' : 'cards');
         tick();
         document.getElementById('today').textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         (() => {
