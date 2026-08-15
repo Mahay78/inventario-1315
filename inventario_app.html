@@ -1,0 +1,2651 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Inventario (Portable)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-row {
+            font-weight: bold;
+            background-color: #e9ecef;
+            border-top: 2px solid #ced4da;
+        }
+
+        .negative-order {
+            color: #dc3545; /* Rojo de Bootstrap */
+            font-weight: bold;
+        }
+
+        /* Colores de estado mejorados */
+        .table-danger { background-color: #f8d7da !important; color: #721c24; } /* Caducado */
+        .table-warning { background-color: #fff3cd !important; color: #856404; } /* Próximo a caducar */
+        .table-info { background-color: #cce5ff !important; color: #004085; } /* Stock bajo */
+
+        /* Estilos para el feedback de ordenación */
+        th[data-sort] {
+            cursor: pointer;
+            position: relative;
+        }
+
+        th[data-sort]::after {
+            content: '';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 4px solid transparent;
+        }
+        
+        th.sorted-asc::after {
+            border-bottom-color: black;
+            border-top-width: 0;
+        }
+        th.sorted-desc::after {
+            border-top-color: black;
+            border-bottom-width: 0;
+        }
+
+        /* Estilo para los botones de stock más compactos */
+        .stock-control {
+            min-width: 120px;
+        }
+        
+        /* Botones de acción más visibles */
+        .action-btn {
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 0.375rem 0.6rem;
+        }
+
+        /* Cabeceras pegajosas (Sticky Headers) */
+        .table-responsive {
+            max-height: 70vh; /* Altura máxima para activar el scroll interno */
+            overflow-y: auto;
+        }
+        
+        .table-responsive thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa !important; /* Fondo gris muy claro para ocultar el texto al hacer scroll */
+            z-index: 10;
+            box-shadow: inset 0 -2px 0 #dee2e6; /* Borde inferior sutil */
+        }
+
+        /* Eliminar flechas del input number para limpieza */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        /* Adaptación para pantallas de móvil (Vista en Tarjetas) */
+        @media screen and (max-width: 768px) {
+            .table-responsive {
+                border: none !important;
+                max-height: none !important;
+                background: transparent;
+                box-shadow: none !important;
+            }
+            .table-responsive table, 
+            .table-responsive thead, 
+            .table-responsive tbody, 
+            .table-responsive th, 
+            .table-responsive td, 
+            .table-responsive tr { 
+                display: block; 
+            }
+            .table-responsive thead tr { 
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            .table-responsive tr {
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                background-color: #fff;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            }
+            .table-responsive td { 
+                border: none;
+                border-bottom: 1px solid #eee; 
+                padding: 12px 15px !important; 
+                text-align: right;
+                min-height: 48px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 10px;
+            }
+            .table-responsive td:before { 
+                font-weight: bold;
+                color: #495057;
+                content: attr(data-label);
+                text-align: left;
+                flex-shrink: 0;
+            }
+            .table-responsive td > div.stock-control {
+                justify-content: flex-end;
+                max-width: 65%;
+            }
+            .table-responsive td:last-child {
+                border-bottom: 0;
+                justify-content: center;
+                padding-left: 15px !important; 
+            }
+            .table-responsive td:last-child:before {
+                display: none; 
+            }
+            .category-row td {
+                padding-left: 15px !important;
+                text-align: center !important;
+                background-color: #e9ecef;
+                justify-content: center;
+                font-size: 1.1rem;
+                border-bottom: none;
+            }
+            .category-row td:before {
+                display: none;
+            }
+            
+            /* Ajustes para los controles del pedido en móvil */
+            #add-monthly-form {
+                flex-direction: column;
+                align-items: stretch !important;
+                width: 100%;
+            }
+            #add-monthly-form input, #add-monthly-form button {
+                width: 100% !important;
+            }
+            #export-monthly-btn {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            /* Mejoras adicionales para la vista móvil */
+            header .btn-group {
+                width: 100%;
+                display: flex;
+            }
+            header .btn-group .btn {
+                flex: 1;
+                font-size: 0.85rem;
+                padding: 0.5rem 0.25rem;
+            }
+            .table-responsive tr {
+                margin-bottom: 1.25rem;
+            }
+            .table-responsive td {
+                padding-top: 12px;
+                padding-bottom: 12px;
+                font-size: 1.05rem;
+            }
+            .stock-control .btn {
+                padding: 0.5rem 1rem !important;
+                font-size: 1.2rem !important;
+            }
+            .stock-control input {
+                font-size: 1.1rem !important;
+            }
+        }
+    </style>
+    <!-- Etiquetas PWA para acceso directo en móviles -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Inventario SVB">
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Inventario%20Soporte%20Vital%22%2C%22short_name%22%3A%22Inventario%20SVB%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f8f9fa%22%2C%22theme_color%22%3A%22%230d6efd%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Bcharset%3Dutf-8%2C%253Csvg%2520xmlns%253D'http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg'%2520viewBox%253D'0%25200%2520100%2520100'%253E%253Crect%2520width%253D'100'%2520height%253D'100'%2520rx%253D'20'%2520fill%253D'%25230d6efd'%252F%253E%253Ctext%2520x%253D'50'%2520y%253D'50'%2520fill%253D'white'%2520font-size%253D'50'%2520font-family%253D'sans-serif'%2520text-anchor%253D'middle'%2520dominant-baseline%253D'central'%253E%25E2%259C%259A%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22192x192%20512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+</head>
+<body>
+    <!-- Modal de Edición de Material -->
+    <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editItemModalLabel">Editar Material</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-item-form">
+                        <input type="hidden" id="edit-item-index">
+                        
+                        <div class="mb-3">
+                            <label for="edit-material" class="form-label">Material</label>
+                            <input type="text" id="edit-material" class="form-control" required="">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-category" class="form-label">Categoría</label>
+                            <datalist id="edit-categories-datalist"><option value="CURAS"></option><option value="CIRCULATORIO"></option><option value="DIVERSOS"></option><option value="EPIS"></option><option value="ARTICULOS VARIOS"></option><option value="LIMPIEZA"></option><option value="no"></option></datalist>
+                            <input type="text" id="edit-category" class="form-control" required="" list="edit-categories-datalist">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-ideal-stock" class="form-label">Stock Ideal (Tener)</label>
+                                <input type="number" id="edit-ideal-stock" class="form-control" required="">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-current-stock" class="form-label">Stock Actual (Tengo)</label>
+                                <input type="number" id="edit-current-stock" class="form-control" required="">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-expiry" class="form-label">Caducidad</label>
+                            <input type="date" id="edit-expiry" class="form-control">
+                            <small class="form-text text-muted">Dejar vacío si es 'SFC' (Sin Fecha de Caducidad).</small>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="container mt-4">
+        <header class="mb-4">
+            <!-- Encabezado Principal -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <h1 class="h2 mb-0">📦 Gestión de Inventario</h1>
+                
+                <!-- Grupo de Botones de Gestión -->
+                <div class="d-flex gap-2 flex-wrap">
+                    <div class="btn-group" role="group">
+                        <button id="download-app-btn" class="btn btn-outline-dark fw-bold" title="Descargar esta aplicación como archivo HTML con tus datos">📥 Descargar App</button>
+                        <button id="export-csv-btn" class="btn btn-outline-success fw-bold" title="Exportar para Excel">📊 Excel/CSV</button>
+                    </div>
+                    
+                    <div class="btn-group" role="group">
+                        <button id="backup-btn" class="btn btn-outline-secondary fw-bold" title="Guardar copia de seguridad (JSON)">💾 Backup</button>
+                        <button id="restore-btn" class="btn btn-outline-secondary fw-bold" title="Cargar copia de seguridad (JSON)">📂 Cargar</button>
+                    </div>
+                    
+                    <div class="btn-group" role="group">
+                        <button id="export-inv-btn" class="btn btn-primary fw-bold" title="Generar PDF del Inventario">📄 PDF Inventario</button>
+                        <button id="export-order-btn" class="btn btn-warning fw-bold text-dark" title="Generar PDF del Pedido">📄 PDF Pedido</button>
+                    </div>
+                </div>
+                
+                <!-- Input oculto para cargar archivos -->
+                <input type="file" id="restore-input" style="display: none;" accept=".json">
+            </div>
+
+            <!-- Panel de Metadatos Editable -->
+            <div class="card mb-3 bg-light border-0">
+                <div class="card-body p-3">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="meta-fecha" class="form-label fw-bold text-muted small text-uppercase">Fecha</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0">📅</span>
+                                <input type="date" id="meta-fecha" class="form-control border-start-0 ps-0">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="meta-unidad" class="form-label fw-bold text-muted small text-uppercase">Unidad</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0">🚑</span>
+                                <input type="text" id="meta-unidad" class="form-control border-start-0 ps-0" placeholder="Ej. 1315">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="meta-nombre" class="form-label fw-bold text-muted small text-uppercase">Responsable</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0">👤</span>
+                                <input type="text" id="meta-nombre" class="form-control border-start-0 ps-0" placeholder="Nombre del responsable">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra de Búsqueda -->
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white">🔍</span>
+                <input type="text" id="search-input" class="form-control border-start-0" placeholder="Buscar material o categoría...">
+            </div>
+        </header>
+
+        <ul class="nav nav-tabs mb-3" id="appTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventory-tab-pane" type="button" role="tab" aria-controls="inventory-tab-pane" aria-selected="true">📋 Inventario Principal</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly-tab-pane" type="button" role="tab" aria-controls="monthly-tab-pane" aria-selected="false" tabindex="-1">📅 Pedido Mensual</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="appTabsContent">
+            <div class="tab-pane fade show active" id="inventory-tab-pane" role="tabpanel" aria-labelledby="inventory-tab" tabindex="0">
+
+        <div id="notifications" class="alert alert-warning" role="alert" style="display: block; border-radius: 8px;">🚨 <strong>CADUCADOS:</strong> GLUCOSA GEL<br></div>
+
+        <div class="accordion mb-3 shadow-sm" id="add-item-accordion">
+            <div class="accordion-item border-0">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button collapsed bg-white text-primary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                        ➕ Añadir Nuevo Material
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#add-item-accordion">
+                    <div class="accordion-body bg-light">
+                        <form id="add-item-form">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <input type="text" id="new-material" class="form-control" placeholder="Material" required="">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="number" id="new-ideal-stock" class="form-control" placeholder="Tener" required="">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="number" id="new-current-stock" class="form-control" placeholder="Tengo" required="">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="date" id="new-expiry" class="form-control" placeholder="Caducidad">
+                                </div>
+                                <div class="col-md-2">
+                                    <datalist id="categories-datalist"><option value="CURAS"></option><option value="CIRCULATORIO"></option><option value="DIVERSOS"></option><option value="EPIS"></option><option value="ARTICULOS VARIOS"></option><option value="LIMPIEZA"></option><option value="no"></option></datalist>
+                                    <input type="text" id="new-category" class="form-control" placeholder="Categoría" required="" list="categories-datalist">
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="submit" class="btn btn-primary w-100 fw-bold">＋</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main id="inventory-table" class="table-responsive shadow-sm rounded border"><table class="table table-bordered table-hover mb-0 align-middle"><thead><tr><th data-sort="material" class="">Material</th><th data-sort="idealStock" class="">Tener</th><th data-sort="currentStock" class="">Tengo</th><th data-sort="order" class="">Pido</th><th data-sort="expiry" class="">Caducidad</th><th>Acciones</th></tr></thead><tbody><tr class="category-row"><td colspan="6">CURAS</td></tr>
+            <tr class="" data-index="0">
+                <td data-label="Material">ALCOHOL</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(0, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(0, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(0, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">30/09/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(0)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(0)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="1">
+                <td data-label="Material">AGUA OXIGENADA</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(1, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(1, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(1, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">30/11/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(1)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(1)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="2">
+                <td data-label="Material">GASAS ESTERIL</td>
+                <td data-label="Tener">50</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(2, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="50" onchange="updateOrder(2, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(2, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">30/04/2028</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(2)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(2)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="3">
+                <td data-label="Material">COMPRESAS ESTERIL</td>
+                <td data-label="Tener">50</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(3, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="28" onchange="updateOrder(3, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(3, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">22</td>
+                <td data-label="Caducidad">31/12/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(3)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(3)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="4">
+                <td data-label="Material">VENDA CREPE  15X 10</td>
+                <td data-label="Tener">10</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(4, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="9" onchange="updateOrder(4, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(4, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">31/12/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(4)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(4)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="5">
+                <td data-label="Material">VENDA CREPE 10 X 5</td>
+                <td data-label="Tener">10</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(5, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="9" onchange="updateOrder(5, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(5, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">31/08/2030</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(5)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(5)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="6">
+                <td data-label="Material">VENDA CREPE 5X4</td>
+                <td data-label="Tener">10</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(6, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="10" onchange="updateOrder(6, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(6, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/08/2030</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(6)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(6)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="7">
+                <td data-label="Material">VENDA GASAS 5X5</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(7, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(7, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(7, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(7)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(7)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="8">
+                <td data-label="Material">VENDA GASAS 10X10</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(8, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(8, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(8, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(8)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(8)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="9">
+                <td data-label="Material">SUERO DE IRRIG 250ML</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(9, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(9, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(9, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/12/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(9)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(9)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="10">
+                <td data-label="Material">SUERO DE IRRIG 100ML</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(10, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(10, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(10, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">31/12/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(10)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(10)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="11">
+                <td data-label="Material">SUERO DE IRRIG 500ML</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(11, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(11, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(11, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">30/07/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(11)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(11)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="12">
+                <td data-label="Material">ESPARATRAPO RECORTABLE</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(12, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(12, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(12, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">01/11/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(12)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(12)">🗑️</button>
+                </td>
+            </tr>
+        <tr class="category-row"><td colspan="6">CIRCULATORIO</td></tr>
+            <tr class="" data-index="13">
+                <td data-label="Material">ELECTRODO DESA ADU</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(13, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(13, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(13, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/05/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(13)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(13)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="14">
+                <td data-label="Material">ELECTRODO DESA PED</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(14, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(14, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(14, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">30/11/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(14)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(14)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="15">
+                <td data-label="Material">RESERVORIO ADULT</td>
+                <td data-label="Tener">10</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(15, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="10" onchange="updateOrder(15, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(15, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">14/04/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(15)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(15)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="16">
+                <td data-label="Material">RESERVORIO PED</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(16, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(16, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(16, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/08/2028</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(16)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(16)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="17">
+                <td data-label="Material">NEBULIZADOR ADULT</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(17, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(17, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(17, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">17/02/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(17)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(17)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="18">
+                <td data-label="Material">NEBULIZADOR PED</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(18, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(18, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(18, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">07/01/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(18)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(18)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="19">
+                <td data-label="Material">GAFAS NASALES ADULT</td>
+                <td data-label="Tener">10</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(19, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="9" onchange="updateOrder(19, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(19, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">30/09/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(19)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(19)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="20">
+                <td data-label="Material">GAFAS NASALES PED</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(20, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(20, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(20, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/01/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(20)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(20)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="21">
+                <td data-label="Material">VENTIMASK ADULT</td>
+                <td data-label="Tener">10</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(21, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="10" onchange="updateOrder(21, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(21, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">01/01/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(21)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(21)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="22">
+                <td data-label="Material">VENTIMASK PED</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(22, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(22, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(22, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/01/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(22)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(22)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="23">
+                <td data-label="Material">ALARGADERA</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(23, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(23, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(23, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">12/04/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(23)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(23)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="24">
+                <td data-label="Material">FILTROS  AMBU</td>
+                <td data-label="Tener">4</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(24, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="4" onchange="updateOrder(24, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(24, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">28/12/2028</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(24)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(24)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="25">
+                <td data-label="Material">CANULA DE GUEDEL 00</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(25, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(25, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(25, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">30/06/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(25)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(25)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="26">
+                <td data-label="Material">CANULA DE GUEDEL 0</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(26, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(26, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(26, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">30/06/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(26)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(26)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="27">
+                <td data-label="Material">CANULA DE GUEDEL 1</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(27, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(27, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(27, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/07/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(27)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(27)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="28">
+                <td data-label="Material">CANULA DE GUEDEL 2</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(28, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(28, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(28, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/07/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(28)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(28)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="29">
+                <td data-label="Material">CANULA DE GUEDEL 3</td>
+                <td data-label="Tener">5</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(29, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(29, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(29, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">01/03/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(29)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(29)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="30">
+                <td data-label="Material">CANULA DE GUEDEL 4</td>
+                <td data-label="Tener">5</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(30, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(30, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(30, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">01/03/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(30)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(30)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="31">
+                <td data-label="Material">CANULA DE GUEDEL 5</td>
+                <td data-label="Tener">5</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(31, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(31, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(31, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">01/05/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(31)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(31)">🗑️</button>
+                </td>
+            </tr>
+        <tr class="category-row"><td colspan="6">DIVERSOS</td></tr>
+            <tr class="" data-index="32">
+                <td data-label="Material">BOLSA DE VOMITOS</td>
+                <td data-label="Tener">15</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(32, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="15" onchange="updateOrder(32, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(32, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(32)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(32)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="33">
+                <td data-label="Material">TIRA DE GLUCOMETRO</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(33, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(33, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(33, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">07/03/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(33)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(33)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="34">
+                <td data-label="Material">LANCETAS</td>
+                <td data-label="Tener">50</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(34, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="44" onchange="updateOrder(34, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(34, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">6</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(34)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(34)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="35">
+                <td data-label="Material">MANTA TERMICA</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(35, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(35, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(35, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/12/2028</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(35)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(35)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="36">
+                <td data-label="Material">CONO TIMPANICOS</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(36, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="0" onchange="updateOrder(36, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(36, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(36)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(36)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="37">
+                <td data-label="Material">SONDA DE ASP 1 DE CADA</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(37, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(37, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(37, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">13/11/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(37)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(37)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="38">
+                <td data-label="Material">RASURADORA</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(38, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(38, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(38, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="negative-order">-1</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(38)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(38)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="39">
+                <td data-label="Material">EMPAPADORES</td>
+                <td data-label="Tener">12</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(39, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="7" onchange="updateOrder(39, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(39, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">5</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(39)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(39)">🗑️</button>
+                </td>
+            </tr>
+        <tr class="category-row"><td colspan="6">EPIS</td></tr>
+            <tr class="" data-index="40">
+                <td data-label="Material">BATAS</td>
+                <td data-label="Tener">50</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(40, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="50" onchange="updateOrder(40, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(40, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(40)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(40)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="41">
+                <td data-label="Material">MASCARILLA FFP3</td>
+                <td data-label="Tener">2</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(41, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(41, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(41, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(41)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(41)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="42">
+                <td data-label="Material">MASCARILLA QUIRURGICAS</td>
+                <td data-label="Tener">50</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(42, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="50" onchange="updateOrder(42, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(42, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(42)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(42)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="43">
+                <td data-label="Material">MASCARILLA FFP2</td>
+                <td data-label="Tener">30</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(43, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="29" onchange="updateOrder(43, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(43, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">31/01/2029</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(43)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(43)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="44">
+                <td data-label="Material">BUZOS XXL</td>
+                <td data-label="Tener">5</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(44, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(44, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(44, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(44)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(44)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="45">
+                <td data-label="Material">BUZOSXL</td>
+                <td data-label="Tener">5</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(45, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(45, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(45, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(45)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(45)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="46">
+                <td data-label="Material">BUZOS L</td>
+                <td data-label="Tener">5</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(46, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(46, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(46, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(46)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(46)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="47">
+                <td data-label="Material">BUZOS M</td>
+                <td data-label="Tener">5</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(47, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(47, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(47, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(47)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(47)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="48">
+                <td data-label="Material">BUZOS S</td>
+                <td data-label="Tener">5</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(48, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(48, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(48, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(48)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(48)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="49">
+                <td data-label="Material">GUANTES XL</td>
+                <td data-label="Tener">4</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(49, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(49, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(49, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">2</td>
+                <td data-label="Caducidad">31/10/2028</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(49)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(49)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="50">
+                <td data-label="Material">GUANTES L</td>
+                <td data-label="Tener">4</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(50, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(50, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(50, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">31/10/2028</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(50)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(50)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="51">
+                <td data-label="Material">GUANTES M</td>
+                <td data-label="Tener">4</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(51, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="4" onchange="updateOrder(51, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(51, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">31/05/2027</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(51)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(51)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="52">
+                <td data-label="Material">GUANTES S</td>
+                <td data-label="Tener">4</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(52, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="4" onchange="updateOrder(52, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(52, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">11/12/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(52)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(52)">🗑️</button>
+                </td>
+            </tr>
+        <tr class="category-row"><td colspan="6">ARTICULOS VARIOS</td></tr>
+            <tr class="" data-index="53">
+                <td data-label="Material">ROLLO IMPRESORA</td>
+                <td data-label="Tener">2</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(53, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(53, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(53, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(53)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(53)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-danger" data-index="54">
+                <td data-label="Material">GLUCOSA GEL</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(54, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="0" onchange="updateOrder(54, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(54, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">3</td>
+                <td data-label="Caducidad">15/07/2026</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(54)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(54)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="55">
+                <td data-label="Material">BATEA</td>
+                <td data-label="Tener">4</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(55, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="4" onchange="updateOrder(55, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(55, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(55)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(55)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="56">
+                <td data-label="Material">GEL HIDROALCOLICO</td>
+                <td data-label="Tener">2</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(56, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(56, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(56, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">30/04/2028</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(56)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(56)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="57">
+                <td data-label="Material">TUBULADURA ASP</td>
+                <td data-label="Tener">2</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(57, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(57, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(57, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(57)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(57)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="58">
+                <td data-label="Material">VASOS DE ASPIRADOR</td>
+                <td data-label="Tener">2</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(58, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(58, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(58, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(58)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(58)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="59">
+                <td data-label="Material">PARTE DE ASISTENCIA</td>
+                <td data-label="Tener">2</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(59, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(59, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(59, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(59)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(59)">🗑️</button>
+                </td>
+            </tr>
+        <tr class="category-row"><td colspan="6">LIMPIEZA</td></tr>
+            <tr class="" data-index="60">
+                <td data-label="Material">LEJIA</td>
+                <td data-label="Tener">3</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(60, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(60, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(60, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(60)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(60)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="61">
+                <td data-label="Material">PAPEL HIGENICO</td>
+                <td data-label="Tener">6</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(61, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="3" onchange="updateOrder(61, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(61, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">3</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(61)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(61)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="62">
+                <td data-label="Material">PAPEL DISPENSADOR</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(62, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="0" onchange="updateOrder(62, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(62, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(62)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(62)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="63">
+                <td data-label="Material">JABON DE MANO</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(63, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="0" onchange="updateOrder(63, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(63, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(63)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(63)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="64">
+                <td data-label="Material">JABON LAVAVAJILLAS</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(64, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="0" onchange="updateOrder(64, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(64, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(64)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(64)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="65">
+                <td data-label="Material">BOLSAS NEGRA PEQUE A</td>
+                <td data-label="Tener">2</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(65, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="2" onchange="updateOrder(65, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(65, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(65)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(65)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="66">
+                <td data-label="Material">BOLSA AMARILLA PEQUE A</td>
+                <td data-label="Tener">2</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(66, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(66, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(66, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(66)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(66)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="" data-index="67">
+                <td data-label="Material">BOLSA AMARILLA GRANDE</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(67, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="1" onchange="updateOrder(67, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(67, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="">0</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(67)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(67)">🗑️</button>
+                </td>
+            </tr>
+        
+            <tr class="table-info" data-index="68">
+                <td data-label="Material">OXIVIR</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(68, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="0" onchange="updateOrder(68, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(68, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(68)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(68)">🗑️</button>
+                </td>
+            </tr>
+        <tr class="category-row"><td colspan="6">no</td></tr>
+            <tr class="table-info" data-index="69">
+                <td data-label="Material">biofresh</td>
+                <td data-label="Tener">1</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(69, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="0" onchange="updateOrder(69, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(69, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">1</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(69)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(69)">🗑️</button>
+                </td>
+            </tr>
+        <tr class="category-row"><td colspan="6">Papelería </td></tr>
+            <tr class="table-info" data-index="70">
+                <td data-label="Material">Check list</td>
+                <td data-label="Tener">20</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(70, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="5" onchange="updateOrder(70, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(70, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="text-danger fw-bold">15</td>
+                <td data-label="Caducidad">SFC</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(70)">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(70)">🗑️</button>
+                </td>
+            </tr>
+        </tbody><tfoot>
+        <tr class="table-primary fw-bold">
+            <td colspan="3" class="text-end">TOTAL DE UNIDADES A PEDIR (Stock &lt; Ideal)</td>
+            <td colspan="3">69</td>
+        </tr>
+    </tfoot></table></main>
+            </div> <!-- Fin de inventory-tab-pane -->
+            <div class="tab-pane fade" id="monthly-tab-pane" role="tabpanel" aria-labelledby="monthly-tab" tabindex="0">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 mt-3 gap-2">
+                     <form id="add-monthly-form" class="d-flex flex-wrap gap-2 align-items-center m-0">
+                         <input type="text" id="mo-material" class="form-control" style="width: 250px;" placeholder="Material" required="" list="mo-material-datalist">
+                         <datalist id="mo-material-datalist"></datalist>
+                         <input type="number" id="mo-quantity" class="form-control text-center" style="width: 100px;" placeholder="Cant." required="" min="1" value="1">
+                         <input type="text" id="mo-location" class="form-control" style="width: 180px;" placeholder="Ubicación">
+                         <button type="submit" class="btn btn-primary fw-bold">➕ Añadir</button>
+                     </form>
+                     <button id="export-monthly-btn" class="btn btn-info fw-bold text-dark" title="Generar PDF del Pedido Mensual">📅 Exportar PDF</button>
+                </div>
+                <main id="monthly-table-container" class="table-responsive shadow-sm rounded border">
+                    <!-- Se renderizará dinámicamente -->
+                </main>
+            </div> <!-- Fin de monthly-tab-pane -->
+        </div> <!-- Fin de tab-content -->
+    </div>
+
+    <!-- Se mantienen las librerías externas -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" crossorigin="anonymous" integrity="sha384-QQBwnzmpf8eCm7WvgJ/dpvJ51cajsTkfDMgOq5QVBZav9687X5xjlZo8zroLyU3+"></script>
+
+    <script>
+        // Datos CSV originales
+        const csvData = `FECHA,2026-06-30,UNIDAD,1315,NOMBRE,,Fran/ Roberto  ,,
+STOCK DE MATERIAL SOPORTE VITAL BASICO,,,,,,,,
+MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD
+CURAS,,,,,,,,
+ALCOHOL,,1,,1,,0,,09_29
+AGUA OXIGENADA,,1,,1,,0,,Nov-29
+GASAS ESTERIL,,50,,50,,0,,Apr-28
+COMPRESAS ESTERIL,,50,,28,,22,,Dec-26
+VENDA CREPE  15X 10,,10,,9,,1,,Dec-26
+VENDA CREPE 10 X 5,,10,,9,,1,,Aug-30
+VENDA CREPE 5X4,,10,,10,,0,,Aug-30
+VENDA GASAS 5X5,,1,,1,,0,,sfc
+VENDA GASAS 10X10,,1,,1,,0,,sfc
+SUERO DE IRRIG 250ML,,3,,3,,0,,Dec-26
+SUERO DE IRRIG 100ML,,3,,2,,1,,Dec-26
+SUERO DE IRRIG 500ML,,3,,3,,0,,2027-07-30
+ESPARATRAPO RECORTABLE,,1,,1,,0,,11/1/2026
+CIRCULATORIO,,,,,,,,
+ELECTRODO DESA ADU,,3,,3,,0,,May-27
+ELECTRODO DESA PED,,1,,1,,0,,Nov-26
+RESERVORIO ADULT,,10,,10,,0,,4/14/2029
+RESERVORIO PED,,1,,1,,0,,Aug-28
+NEBULIZADOR ADULT,,3,,3,,0,,2029-02-17
+NEBULIZADOR PED,,1,,1,,0,,1/7/2029
+GAFAS NASALES ADULT,,10,,9,,1,,Sep-29
+GAFAS NASALES PED,,3,,3,,0,,Jan-27
+VENTIMASK ADULT,,10,,10,,0,,1/1/2027
+VENTIMASK PED,,3,,3,,0,,Jan-27
+ALARGADERA,,3,,3,,0,,2029-04-12
+FILTROS  AMBU,,4,,4,,0,,12/28/2028
+CANULA DE GUEDEL 00,,1,,1,,0,,Jun-29
+CANULA DE GUEDEL 0,,1,,1,,0,,Jun-29
+CANULA DE GUEDEL 1,,1,,1,,0,,Jul-29
+CANULA DE GUEDEL 2,,1,,1,,0,,Jul-29
+CANULA DE GUEDEL 3,,5,,5,,0,,3/1/2027
+CANULA DE GUEDEL 4,,5,,5,,0,,3/1/2027
+CANULA DE GUEDEL 5,,5,,5,,0,,5/1/2027
+DIVERSOS,,,,,,,,
+BOLSA DE VOMITOS,,15,,15,,0,,Sfc
+TIRA DE GLUCOMETRO,,3,,3,,0,,3/7/2027
+LANCETAS,,50,,44,,6,,Sfc
+MANTA TERMICA,,3,,3,,0,,Dec-28
+CONO TIMPANICOS,,1,,0,,1,,sfc
+SONDA DE ASP 1 DE CADA,,1,,1,,0,,2026-11-13
+RASURADORA,,1,,2,,-1,,Sfc
+EMPAPADORES,,12,,7,,5,,Sfc
+EPIS,,,,,,,,
+BATAS,,50,,50,,0,,sfc
+MASCARILLA FFP3,,2,,2,,0,,Sfc
+MASCARILLA QUIRURGICAS,,50,,50,,0,,Sfc
+MASCARILLA FFP2,,30,,29,,1,,Jan-29
+BUZOS XXL,,5,,5,,0,,Sfc
+BUZOSXL,,5,,5,,0,,sfc
+BUZOS L,,5,,5,,0,,sfc
+BUZOS M,,5,,5,,0,,sfc
+BUZOS S,,5,,5,,0,,sfc
+GUANTES XL,,4,,2,,2,,Oct-28
+GUANTES L,,4,,3,,1,,Oct-28
+GUANTES M,,4,,4,,0,,May-27
+GUANTES S,,4,,4,,0,,12/11/2026
+ARTICULOS VARIOS,,,,,,,,
+ROLLO IMPRESORA,,2,,2,,0,,sfc
+GLUCOSA GEL,,3,,0,,3,,7/15/2026
+BATEA,,4,,4,,0,,Sfc
+GEL HIDROALCOLICO,,2,,2,,0,,Apr-28
+TUBULADURA ASP,,2,,2,,0,,Sfc
+VASOS DE ASPIRADOR,,2,,2,,0,,Sfc
+PARTE DE ASISTENCIA,,2,,2,,0,,Sfc
+LIMPIEZA,,,,,,,,
+LEJIA,,3,,3,,0,,sfc
+PAPEL HIGENICO,,6,,3,,3,,sfc
+PAPEL DISPENSADOR,,1,,0,,1,,sfc
+JABON DE MANO,,1,,0,,1,,sfc
+JABON LAVAVAJILLAS,,1,,0,,1,,sfc
+BOLSAS NEGRA PEQUE A,,2,,2,,0,,sfc
+BOLSA AMARILLA PEQUE A,,2,,1,,1,,sfc
+BOLSA AMARILLA GRANDE,,1,,1,,0,,sfc
+OXIVIR,,1,,0,,1,,sfc
+no,,,,,,,,
+biofresh,,1,,0,,1,,sfc
+Papelería ,,,,,,,,
+Check list,,20,,5,,15,,sfc
+PEDIDO MENSUAL INDEPENDIENTE,,,,,,,,
+MATERIAL,,CANTIDAD,,UBICACION,,,,,
+Glucosa gel,,2,,Framabox,,,,,
+Alprazolam ,,2,,Framabox ,,,,,
+Tramadol ,,2,,Framabox ,,,,,
+Naloxona,,2,,Framabox ,,,,,
+Furosemidq,,2,,Framabox ,,,,,
+Bisturí n°11,,1,,B. Circulatorio - estuche 3,,,,,
+Gel de glucosa ,,2,,B. Circulatorio -Estuche 5,,,,,
+Sonda nasogastrica n° 6,,1,,B circulatorio -solapa Interna ,,,,,
+Sonda de aspiración n°14,,1,,Ambulancia, encima manorreductor ,,,,,
+`;
+
+let appData = {};
+let sortColumn = '';
+let sortDirection = 'asc';
+let editModalInstance; 
+
+// --- UTILIDADES ---
+
+function formatDate(dateObj) {
+    if (!dateObj) return 'SFC';
+    if (isNaN(dateObj.getTime())) return 'SFC'; 
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+function parseDate(dateString) {
+    if (!dateString || dateString.toLowerCase() === 'sfc' || dateString === 'sfc') {
+        return null;
+    }
+    const isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) return new Date(isoMatch[1], isoMatch[2] - 1, isoMatch[3]); 
+    const slashMatch = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (slashMatch) {
+        let year = parseInt(slashMatch[3]);
+        if (year < 100) year += 2000;
+        return new Date(year, parseInt(slashMatch[1]) - 1, parseInt(slashMatch[2]));
+    }
+    const monthYearMatch = dateString.match(/^([a-zA-Z]{3}|\d{1,2})[-_](\d{2})$/);
+    if (monthYearMatch) {
+        let month = monthYearMatch[1];
+        let monthIndex;
+        if (!isNaN(month) && parseInt(month) >= 1 && parseInt(month) <= 12) { 
+            monthIndex = parseInt(month) - 1; 
+        } else { 
+            monthIndex = new Date(Date.parse(month + " 1, 2000")).getMonth();
+        }
+        const year = parseInt(monthYearMatch[2]);
+        const fullYear = year < 70 ? year + 2000 : year + 1900;
+        if (monthIndex >= 0 && monthIndex <= 11) return new Date(fullYear, monthIndex + 1, 0); 
+    }
+    const parsed = new Date(dateString);
+    if (!isNaN(parsed.getTime())) return parsed;
+    return null;
+}
+
+function dateToISO(dateObj) {
+    if (!dateObj || isNaN(dateObj.getTime())) return '';
+    return dateObj.toISOString().split('T')[0];
+}
+
+function escapeHTML(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function csvCell(value) {
+    let s = (value === null || value === undefined) ? '' : String(value);
+    if (/^[=+\-@\t\r]/.test(s)) {
+        s = "'" + s;
+    }
+    return s.replace(/"/g, '""');
+}
+
+
+// --- LÓGICA DE DATOS ---
+
+function parseCSV(data) {
+    const rows = data.split('\n');
+    const metadata = {};
+    const inventory = [];
+    const monthlyOrders = [];
+    let category = '';
+    let isParsingMonthly = false;
+
+    const headerRow = rows[0].split(',');
+    metadata.fecha = headerRow[1];
+    metadata.unidad = headerRow[3];
+    metadata.nombre = headerRow[6];
+
+    for (let i = 3; i < rows.length; i++) {
+        const row = rows[i].split(',');
+        const material = row[0] ? row[0].trim() : '';
+
+        if (material === 'PEDIDO MENSUAL INDEPENDIENTE') {
+            isParsingMonthly = true;
+            i++; // Saltar la fila de encabezados
+            continue;
+        }
+
+        if (isParsingMonthly) {
+            if (material) {
+                monthlyOrders.push({
+                    material: material,
+                    quantity: parseInt(row[2]) || 1,
+                    location: row[4] ? row[4].trim() : ''
+                });
+            }
+        } else {
+            if (material && !row[2] && !row[4]) {
+                category = material;
+            } 
+            else if (material && (row[2] || row[4])) { 
+                const item = {
+                    category: category,
+                    material: material,
+                    idealStock: parseInt(row[2]) || 0,
+                    currentStock: parseInt(row[4]) || 0,
+                    order: 0,
+                    expiry: row[8] ? row[8].trim() : 'sfc'
+                };
+                item.order = item.idealStock - item.currentStock;
+                inventory.push(item);
+            }
+        }
+    }
+    return { metadata, inventory, monthlyOrders };
+}
+
+function loadData() {
+    const savedData = localStorage.getItem('inventoryData');
+    if (savedData) {
+        appData = JSON.parse(savedData);
+        if (!appData.monthlyOrders) {
+            appData.monthlyOrders = [];
+        }
+    } else {
+        appData = parseCSV(csvData);
+        saveData();
+    }
+}
+
+function saveData() {
+    localStorage.setItem('inventoryData', JSON.stringify(appData));
+}
+
+
+// --- RENDERING Y UI ---
+
+function renderTable() {
+    const { metadata, inventory } = appData;
+
+    document.getElementById('meta-fecha').value = dateToISO(parseDate(metadata.fecha));
+    document.getElementById('meta-unidad').value = metadata.unidad || ''; 
+    document.getElementById('meta-nombre').value = metadata.nombre || '';
+
+    const tableContainer = document.getElementById('inventory-table');
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    
+    const filteredInventory = inventory.filter(item => 
+        item.material.toLowerCase().includes(searchTerm) || 
+        item.category.toLowerCase().includes(searchTerm)
+    );
+
+    if (sortColumn) {
+        filteredInventory.sort((a, b) => {
+            let aValue = a[sortColumn];
+            let bValue = b[sortColumn];
+
+            if (sortColumn === 'expiry') {
+                aValue = parseDate(aValue);
+                bValue = parseDate(bValue);
+                if (!aValue) return 1; 
+                if (!bValue) return -1;
+            }
+            
+            if (aValue === bValue) return 0;
+            if (sortDirection === 'asc') {
+                return aValue > bValue ? 1 : -1;
+            } else {
+                return aValue < bValue ? 1 : -1;
+            }
+        });
+    }
+
+    let currentCategory = '';
+    let totalItemsToOrder = 0;
+    
+    let tableHTML = '<table class="table table-bordered table-hover mb-0 align-middle"><thead><tr>';
+    
+    const headers = [
+        { key: 'material', name: 'Material' },
+        { key: 'idealStock', name: 'Tener' },
+        { key: 'currentStock', name: 'Tengo' },
+        { key: 'order', name: 'Pido' },
+        { key: 'expiry', name: 'Caducidad' }
+    ];
+
+    headers.forEach(h => {
+        let sortClass = '';
+        if (sortColumn === h.key) {
+            sortClass = `sorted-${sortDirection}`;
+        }
+        tableHTML += `<th data-sort="${h.key}" class="${sortClass}">${h.name}</th>`;
+    });
+
+    tableHTML += '<th>Acciones</th></tr></thead><tbody>';
+
+    const notifications = { expired: [], expiringSoon: [] };
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(now.getDate() + 30);
+    now.setHours(0,0,0,0);
+    thirtyDaysFromNow.setHours(0,0,0,0);
+
+    filteredInventory.forEach((item) => {
+        const itemIndex = appData.inventory.indexOf(item);
+        
+        if (item.order > 0) {
+            totalItemsToOrder += item.order;
+        }
+
+        if (item.category !== currentCategory) {
+            currentCategory = item.category;
+            tableHTML += `<tr class="category-row"><td colspan="6">${escapeHTML(currentCategory)}</td></tr>`;
+        }
+
+        const expiryDate = parseDate(item.expiry);
+        let rowClass = '';
+        let displayExpiry = item.expiry;
+
+        if (expiryDate) {
+            expiryDate.setHours(0,0,0,0);
+            displayExpiry = formatDate(expiryDate);
+
+            if (expiryDate < now) {
+                rowClass = 'table-danger'; 
+                notifications.expired.push(item.material);
+            } else if (expiryDate <= thirtyDaysFromNow) {
+                rowClass = 'table-warning';
+                notifications.expiringSoon.push(item.material);
+            }
+        } else {
+             displayExpiry = 'SFC';
+        }
+
+        const lowStock = item.currentStock < item.idealStock;
+        if (lowStock && rowClass === '') { 
+            rowClass = 'table-info'; 
+        }
+        
+        tableHTML += `
+            <tr class="${rowClass}" data-index="${itemIndex}">
+                <td data-label="Material">${escapeHTML(item.material)}</td>
+                <td data-label="Tener">${item.idealStock}</td>
+                <td data-label="Tengo" style="width: 150px;">
+                    <div class="input-group input-group-sm stock-control">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(${itemIndex}, -1)">-</button>
+                        <input type="number" class="form-control text-center px-1" value="${item.currentStock}" onchange="updateOrder(${itemIndex}, this.value)">
+                        <button class="btn btn-outline-secondary fw-bold" type="button" onclick="adjustStock(${itemIndex}, 1)">+</button>
+                    </div>
+                </td>
+                <td data-label="Pido" class="${item.order > 0 ? 'text-danger fw-bold' : (item.order < 0 ? 'negative-order' : '')}">${item.order}</td>
+                <td data-label="Caducidad">${displayExpiry}</td>
+                <td data-label="Acciones">
+                    <button class="btn btn-primary btn-sm action-btn" title="Editar" onclick="openEditModal(${itemIndex})">✏️</button>
+                    <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteItem(${itemIndex})">🗑️</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `</tbody><tfoot>
+        <tr class="table-primary fw-bold">
+            <td colspan="3" class="text-end">TOTAL DE UNIDADES A PEDIR (Stock < Ideal)</td>
+            <td colspan="3">${totalItemsToOrder > 0 ? totalItemsToOrder : 0}</td>
+        </tr>
+    </tfoot></table>`;
+    
+    tableContainer.innerHTML = tableHTML;
+
+    const notificationDiv = document.getElementById('notifications');
+    let notificationHTML = '';
+    if (notifications.expired.length > 0) {
+        notificationHTML += `🚨 <strong>CADUCADOS:</strong> ${escapeHTML(notifications.expired.join(', '))}<br>`;
+    }
+    if (notifications.expiringSoon.length > 0) {
+        notificationHTML += `⚠️ <strong>PRÓXIMOS A CADUCAR:</strong> ${escapeHTML(notifications.expiringSoon.join(', '))}`;
+    }
+
+    if (notificationHTML) {
+        notificationDiv.innerHTML = notificationHTML;
+        notificationDiv.style.display = 'block';
+    } else {
+        notificationDiv.style.display = 'none';
+    }
+
+    const options = categories.map(category => `<option value="${escapeHTML(category)}"></option>`).join('');
+    datalistAdd.innerHTML = options;
+    datalistEdit.innerHTML = options;
+
+    const materials = [...new Set(inventory.map(item => item.material))];
+    const datalistMoMaterial = document.getElementById('mo-material-datalist');
+    if (datalistMoMaterial) {
+        datalistMoMaterial.innerHTML = materials.map(m => `<option value="${escapeHTML(m)}"></option>`).join('');
+    }
+    
+    renderMonthlyTable();
+}
+
+function renderMonthlyTable() {
+    const tableContainer = document.getElementById('monthly-table-container');
+    if (!tableContainer) return;
+
+    if (!appData.monthlyOrders) {
+        appData.monthlyOrders = [];
+    }
+
+    let tableHTML = '<table class="table table-bordered table-hover mb-0 align-middle"><thead><tr class="table-light">';
+    tableHTML += '<th>Material</th><th style="width: 120px;" class="text-center">Cantidad</th><th style="width: 250px;">Ubicación</th><th style="width: 90px;" class="text-center">Acciones</th></tr></thead><tbody>';
+
+    if (appData.monthlyOrders.length === 0) {
+        tableHTML += '<tr><td colspan="4" class="text-center text-muted py-4">No hay materiales en el pedido mensual. Utiliza el formulario superior para añadir.</td></tr>';
+    } else {
+        appData.monthlyOrders.forEach((item, index) => {
+            tableHTML += `
+                <tr>
+                    <td data-label="Material" class="fw-bold">${escapeHTML(item.material)}</td>
+                    <td data-label="Cantidad" class="text-center">${item.quantity}</td>
+                    <td data-label="Ubicación">${escapeHTML(item.location || '')}</td>
+                    <td data-label="Acciones" class="text-center">
+                        <button class="btn btn-danger btn-sm action-btn" title="Eliminar" onclick="deleteMonthlyItem(${index})">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    tableHTML += `</tbody></table>`;
+    tableContainer.innerHTML = tableHTML;
+}
+
+window.deleteMonthlyItem = function(index) {
+    if (confirm('¿Eliminar este material del pedido mensual?')) {
+        appData.monthlyOrders.splice(index, 1);
+        saveData();
+        renderMonthlyTable();
+        showNotification('Material eliminado del pedido mensual.', 'danger');
+    }
+};
+
+function addMonthlyItem(event) {
+    event.preventDefault();
+    const material = document.getElementById('mo-material').value;
+    const quantity = parseInt(document.getElementById('mo-quantity').value) || 1;
+    const location = document.getElementById('mo-location').value;
+
+    if (!material) return;
+
+    if (!appData.monthlyOrders) appData.monthlyOrders = [];
+    appData.monthlyOrders.push({
+        material: material,
+        quantity: quantity,
+        location: location
+    });
+
+    saveData();
+    renderMonthlyTable();
+    document.getElementById('add-monthly-form').reset();
+    document.getElementById('mo-quantity').value = 1;
+    showNotification('Material añadido al pedido mensual.', 'success');
+}
+
+
+// --- ACCIONES (GLOBALES) ---
+
+window.adjustStock = function(index, amount) {
+    const item = appData.inventory[index];
+    const newStock = (item.currentStock || 0) + amount;
+    
+    if (newStock < 0) return; 
+
+    item.currentStock = newStock;
+    item.order = item.idealStock - item.currentStock;
+    
+    saveData();
+    renderTable();
+};
+
+window.updateOrder = function(index, newStock) {
+    const newStockValue = parseInt(newStock);
+    if (!isNaN(newStockValue)) {
+        appData.inventory[index].currentStock = newStockValue;
+        appData.inventory[index].order = appData.inventory[index].idealStock - newStockValue;
+        saveData();
+        renderTable(); 
+    }
+};
+
+// Antiguas funciones adjustMonthlyOrder eliminadas
+
+window.deleteItem = function(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar este material?')) {
+        appData.inventory.splice(index, 1);
+        saveData();
+        renderTable();
+        showNotification('Material eliminado correctamente.', 'danger');
+    }
+};
+
+window.openEditModal = function(index) {
+    const item = appData.inventory[index];
+    
+    document.getElementById('edit-item-index').value = index;
+    document.getElementById('edit-material').value = item.material;
+    document.getElementById('edit-ideal-stock').value = item.idealStock;
+    document.getElementById('edit-current-stock').value = item.currentStock;
+    document.getElementById('edit-category').value = item.category;
+
+    const expiryDate = parseDate(item.expiry);
+    document.getElementById('edit-expiry').value = dateToISO(expiryDate);
+    
+    editModalInstance.show();
+};
+
+
+// --- GESTIÓN DE ARCHIVOS (Descargas) ---
+
+// 1. Descargar Backup JSON
+function backupData() {
+    const dataStr = JSON.stringify(appData, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    const today = new Date().toISOString().split('T')[0];
+    link.download = `inventario_backup_${appData.metadata.unidad || 'Unidad'}_${today}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showNotification('Copia de seguridad (JSON) descargada.', 'success');
+}
+
+// Valida y normaliza el esquema de un objeto de datos de la app
+function validateAppData(data) {
+    if (!data || typeof data !== 'object') return null;
+
+    const metadata = (data.metadata && typeof data.metadata === 'object') ? data.metadata : {};
+    const cleanMeta = {
+        fecha: typeof metadata.fecha === 'string' ? metadata.fecha : '',
+        unidad: typeof metadata.unidad === 'string' ? metadata.unidad : '',
+        nombre: typeof metadata.nombre === 'string' ? metadata.nombre : ''
+    };
+
+    if (!Array.isArray(data.inventory)) return null;
+    const inventory = [];
+    for (const raw of data.inventory) {
+        if (!raw || typeof raw !== 'object') continue;
+        const material = String(raw.material != null ? raw.material : '').trim();
+        if (!material) continue;
+        const idealStock = Number(raw.idealStock);
+        const currentStock = Number(raw.currentStock);
+        const item = {
+            material: material,
+            category: (String(raw.category != null ? raw.category : '').trim()) || 'SIN CATEGORÍA',
+            idealStock: Number.isFinite(idealStock) && idealStock >= 0 ? idealStock : 0,
+            currentStock: Number.isFinite(currentStock) && currentStock >= 0 ? currentStock : 0,
+            order: 0,
+            expiry: typeof raw.expiry === 'string' ? raw.expiry : 'sfc'
+        };
+        item.order = item.idealStock - item.currentStock;
+        inventory.push(item);
+    }
+    if (inventory.length === 0) return null;
+
+    const monthlyOrders = Array.isArray(data.monthlyOrders)
+        ? data.monthlyOrders
+            .filter(o => o && typeof o === 'object')
+            .map(o => ({
+                material: String(o.material != null ? o.material : '').trim(),
+                quantity: (() => { const q = Number(o.quantity); return Number.isFinite(q) && q > 0 ? q : 1; })(),
+                location: typeof o.location === 'string' ? o.location : ''
+            }))
+            .filter(o => o.material)
+        : [];
+
+    return { metadata: cleanMeta, inventory, monthlyOrders };
+}
+
+// 2. Cargar Backup JSON
+function restoreData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const contents = e.target.result;
+            const parsed = JSON.parse(contents);
+            const newData = validateAppData(parsed);
+            
+            if (newData) {
+                if(confirm(`¿Cargar copia de "${newData.metadata.unidad}"? Se sobrescribirán los datos actuales.`)) {
+                    appData = newData;
+                    saveData();
+                    renderTable();
+                    showNotification('Datos cargados correctamente.', 'success');
+                }
+            } else {
+                showNotification('Formato de archivo incorrecto o sin materiales válidos.', 'danger');
+            }
+        } catch (error) {
+            showNotification('Error al leer el archivo.', 'danger');
+        }
+        event.target.value = ''; 
+    };
+    reader.readAsText(file);
+}
+
+// 3. Exportar CSV / Excel
+function exportToCSV() {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    // BOM para que Excel abra UTF-8 correctamente
+    csvContent += "\uFEFF"; 
+    csvContent += "Categoria,Material,Tener,Tengo,Pido,Caducidad\n";
+    appData.inventory.forEach(item => {
+        // Escapar comas y prevenir inyección de fórmulas (= + - @ iniciales)
+        const mat = csvCell(item.material);
+        csvContent += `${csvCell(item.category)},${mat},${item.idealStock},${item.currentStock},${item.order},${csvCell(formatDate(parseDate(item.expiry)))}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute("download", `inventario_${appData.metadata.unidad}_${today}.csv`);
+    document.body.appendChild(link); 
+    link.click();
+    document.body.removeChild(link);
+    showNotification('Archivo CSV exportado.', 'success');
+}
+
+// 4. Descargar la APP Completa (HTML) con datos incrustados
+function downloadApp() {
+    // Generar un CSV actualizado con el estado actual
+    let currentCSV = `FECHA,${appData.metadata.fecha || ''},UNIDAD,${appData.metadata.unidad || ''},NOMBRE,,${appData.metadata.nombre || ''} ,,\n`;
+    currentCSV += "STOCK DE MATERIAL SOPORTE VITAL BASICO,,,,,,,,\n";
+    currentCSV += "MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD\n";
+    
+    // Agrupar por categorías para reconstruir el formato similar al original
+    let categories = [...new Set(appData.inventory.map(i => i.category))];
+    
+    categories.forEach(cat => {
+        currentCSV += `${cat},,,,,,,,\n`;
+        const items = appData.inventory.filter(i => i.category === cat);
+        items.forEach(item => {
+             // Reconstruir fila CSV: Material,,Ideal,,Actual,,Order,,Expiry
+             const expiry = item.expiry === 'sfc' ? 'sfc' : item.expiry; // Mantener formato original o sfc
+             currentCSV += `${item.material},,${item.idealStock},,${item.currentStock},,${item.order},,${expiry}\n`;
+        });
+    });
+
+    currentCSV += "PEDIDO MENSUAL INDEPENDIENTE,,,,,,,,\n";
+    currentCSV += "MATERIAL,,CANTIDAD,,UBICACION,,,,,\n";
+    if (appData.monthlyOrders) {
+        appData.monthlyOrders.forEach(mo => {
+            currentCSV += `${mo.material},,${mo.quantity},,${mo.location || ''},,,,,\n`;
+        });
+    }
+
+    // Obtener el HTML actual
+    let htmlContent = document.documentElement.outerHTML;
+    
+    // Reemplazar la variable csvData en el código fuente con los datos actuales
+    // Usamos una expresión regular para encontrar la definición original
+    // Nota: Esto asume que el formato de 'const csvData = `...`;' se mantiene en el código
+    const regex = /const csvData = `[\s\S]*?`;/;
+    const newScript = `const csvData = \`${currentCSV}\`;`;
+    
+    htmlContent = htmlContent.replace(regex, newScript);
+    
+    // Crear blob y descargar
+    const blob = new Blob([htmlContent], {type: 'text/html'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `inventario_app_${appData.metadata.unidad || 'portatil'}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('Aplicación HTML descargada con tus datos actuales.', 'success');
+}
+
+
+// --- GESTIÓN DE FORMULARIOS ---
+
+function handleEditSubmit(event) {
+    event.preventDefault();
+    
+    const index = parseInt(document.getElementById('edit-item-index').value);
+    const item = appData.inventory[index];
+
+    const newMaterial = document.getElementById('edit-material').value;
+    const newCategory = document.getElementById('edit-category').value;
+    const newIdealStock = parseInt(document.getElementById('edit-ideal-stock').value) || 0;
+    const newCurrentStock = parseInt(document.getElementById('edit-current-stock').value) || 0;
+    
+    let newExpiry = document.getElementById('edit-expiry').value; 
+    
+    if (!newExpiry) {
+        newExpiry = 'sfc';
+    }
+
+    item.material = newMaterial;
+    item.category = newCategory;
+    item.idealStock = newIdealStock;
+    item.currentStock = newCurrentStock;
+    item.expiry = newExpiry;
+    item.order = item.idealStock - item.currentStock;
+
+    saveData();
+    renderTable();
+    editModalInstance.hide();
+    showNotification(`Material "${newMaterial}" actualizado completamente.`, 'success');
+}
+
+function addItem(event) {
+    event.preventDefault();
+    let newExpiry = document.getElementById('new-expiry').value;
+    if (!newExpiry) newExpiry = 'sfc';
+
+    const newItem = {
+        material: document.getElementById('new-material').value,
+        idealStock: parseInt(document.getElementById('new-ideal-stock').value) || 0,
+        currentStock: parseInt(document.getElementById('new-current-stock').value) || 0,
+        expiry: newExpiry,
+        category: document.getElementById('new-category').value,
+        order: 0
+    };
+
+    if (!newItem.material || !newItem.category || isNaN(newItem.idealStock) || isNaN(newItem.currentStock)) {
+        showNotification('Por favor, rellena todos los campos obligatorios.', 'danger');
+        return;
+    }
+
+    newItem.order = newItem.idealStock - newItem.currentStock;
+    appData.inventory.push(newItem);
+    saveData();
+    renderTable();
+    document.getElementById('add-item-form').reset();
+    showNotification('Material añadido correctamente.', 'success');
+}
+
+function showNotification(message, type) {
+    const notificationDiv = document.createElement('div');
+    notificationDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+    notificationDiv.setAttribute('role', 'alert');
+    notificationDiv.innerHTML = `
+        ${escapeHTML(message)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    const container = document.querySelector('.container');
+    container.insertBefore(notificationDiv, container.querySelector('header').nextSibling); 
+    setTimeout(() => {
+        const bsAlert = bootstrap.Alert.getInstance(notificationDiv);
+        if (bsAlert) {
+            bsAlert.dispose();
+        } else {
+            notificationDiv.remove();
+        }
+    }, 4000);
+}
+
+
+// --- EXPORTACIÓN Y COMPARTIR ---
+
+async function exportAndSharePDF(doc, fileName, title, text) {
+    if (navigator.share && navigator.canShare) {
+        try {
+            const pdfBlob = doc.output('blob');
+            const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+            
+            if (navigator.canShare({ files: [pdfFile] })) {
+                await navigator.share({
+                    title: title,
+                    text: text,
+                    files: [pdfFile]
+                });
+                return;
+            }
+        } catch (error) {
+            console.log('Error compartiendo o cancelado por usuario:', error);
+        }
+    }
+    doc.save(fileName);
+}
+
+async function handleExportInventoryPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const { metadata, inventory } = appData;
+    
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${metadata.fecha}`, 14, 10);
+    doc.text(`Unidad: ${metadata.unidad}`, 14, 15);
+    doc.text(`Nombre: ${metadata.nombre}`, 14, 20);
+
+    const filteredInventory = inventory.filter(item => 
+        item.material.toLowerCase().includes(document.getElementById('search-input').value.toLowerCase())
+    );
+
+    doc.autoTable({
+        startY: 25,
+        head: [['Material', 'Tener', 'Tengo', 'Pido', 'Caducidad', 'Categoría']],
+        body: filteredInventory.map(item => [
+            item.material,
+            item.idealStock,
+            item.currentStock,
+            item.order,
+            formatDate(parseDate(item.expiry)), 
+            item.category
+        ]),
+        theme: 'striped',
+        styles: { fontSize: 8 }
+    });
+
+    const fileName = `Inventario_${metadata.unidad || 'Unidad'}.pdf`;
+    await exportAndSharePDF(doc, fileName, 'Inventario', `Inventario de unidad ${metadata.unidad} fecha ${metadata.fecha}`);
+}
+
+async function handleExportOrderPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const { metadata, inventory } = appData;
+
+    const filteredInventory = inventory.filter(item => 
+        item.material.toLowerCase().includes(document.getElementById('search-input').value.toLowerCase())
+    );
+    const itemsToOrder = filteredInventory.filter(item => item.order > 0);
+
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${metadata.fecha}`, 14, 10);
+    doc.text(`Unidad: ${metadata.unidad}`, 14, 15);
+    doc.text(`Nombre: ${metadata.nombre}`, 14, 20);
+    
+    if (itemsToOrder.length > 0) {
+        doc.text('Material a Pedir (Total: ' + itemsToOrder.reduce((sum, item) => sum + item.order, 0) + ' unidades)', 14, 30);
+        doc.autoTable({
+            startY: 35,
+            head: [['Material', 'Cantidad a Pedir']],
+            body: itemsToOrder.map(item => [
+                item.material,
+                item.order
+            ]),
+            theme: 'grid',
+            styles: { fontSize: 9 }
+        });
+    } else {
+        doc.text('No hay material para pedir.', 14, 30);
+    }
+
+    const fileName = `Pedido_${metadata.unidad || 'Unidad'}.pdf`;
+    await exportAndSharePDF(doc, fileName, 'Pedido', `Pedido de unidad ${metadata.unidad} fecha ${metadata.fecha}`);
+}
+
+async function handleExportMonthlyOrderPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const { metadata, monthlyOrders } = appData;
+
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${metadata.fecha}`, 14, 10);
+    doc.text(`Unidad: ${metadata.unidad}`, 14, 15);
+    doc.text(`Nombre: ${metadata.nombre}`, 14, 20);
+    
+    if (monthlyOrders && monthlyOrders.length > 0) {
+        doc.text('Pedido Mensual (Total: ' + monthlyOrders.reduce((sum, item) => sum + item.quantity, 0) + ' unidades)', 14, 30);
+        doc.autoTable({
+            startY: 35,
+            head: [['Material', 'Cantidad', 'Ubicación']],
+            body: monthlyOrders.map(item => [
+                item.material,
+                item.quantity,
+                item.location || ''
+            ]),
+            theme: 'grid',
+            styles: { fontSize: 9 }
+        });
+    } else {
+        doc.text('El pedido mensual está vacío.', 14, 30);
+    }
+
+    const fileName = `PedidoMensual_${metadata.unidad || 'Unidad'}.pdf`;
+    await exportAndSharePDF(doc, fileName, 'Pedido Mensual', `Pedido Mensual de unidad ${metadata.unidad} fecha ${metadata.fecha}`);
+}
+
+
+// --- INICIALIZACIÓN Y EVENTOS ---
+
+function setupEventListeners() {
+    const editModalElement = document.getElementById('editItemModal');
+    if (editModalElement) {
+        editModalInstance = new bootstrap.Modal(editModalElement);
+    }
+    
+    document.getElementById('inventory-table').addEventListener('click', (event) => {
+        const header = event.target.closest('th[data-sort]');
+        if (!header) return;
+
+        const column = header.dataset.sort;
+        
+        document.querySelectorAll('th[data-sort]').forEach(th => th.classList.remove('sorted-asc', 'sorted-desc'));
+
+        if (sortColumn === column) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColumn = column;
+            sortDirection = 'asc';
+        }
+        
+        header.classList.add(`sorted-${sortDirection}`);
+        renderTable();
+    });
+
+    const debouncedRenderTable = debounce(renderTable, 300);
+    document.getElementById('search-input').addEventListener('keyup', debouncedRenderTable);
+    
+    // Asignación de botones de descarga
+    document.getElementById('export-inv-btn').addEventListener('click', handleExportInventoryPDF);
+    document.getElementById('export-order-btn').addEventListener('click', handleExportOrderPDF);
+    const exportMonthlyBtn = document.getElementById('export-monthly-btn');
+    if(exportMonthlyBtn) exportMonthlyBtn.addEventListener('click', handleExportMonthlyOrderPDF);
+    document.getElementById('backup-btn').addEventListener('click', backupData);
+    document.getElementById('restore-btn').addEventListener('click', () => document.getElementById('restore-input').click());
+    document.getElementById('restore-input').addEventListener('change', restoreData);
+    document.getElementById('download-app-btn').addEventListener('click', downloadApp);
+    document.getElementById('export-csv-btn').addEventListener('click', exportToCSV);
+    
+    document.getElementById('add-item-form').addEventListener('submit', addItem);
+    const addMonthlyForm = document.getElementById('add-monthly-form');
+    if (addMonthlyForm) addMonthlyForm.addEventListener('submit', addMonthlyItem);
+    document.getElementById('edit-item-form').addEventListener('submit', handleEditSubmit);
+
+    document.getElementById('meta-fecha').addEventListener('change', (event) => {
+        appData.metadata.fecha = event.target.value; 
+        saveData();
+        showNotification('Fecha actualizada.', 'info');
+    });
+
+    document.getElementById('meta-nombre').addEventListener('change', (event) => {
+        appData.metadata.nombre = event.target.value;
+        saveData();
+        showNotification('Responsable actualizado.', 'info');
+    });
+
+    document.getElementById('meta-unidad').addEventListener('change', (event) => {
+        appData.metadata.unidad = event.target.value;
+        saveData();
+        showNotification('Unidad actualizada.', 'info');
+    });
+}
+
+function init() {
+    loadData();
+    setupEventListeners();
+    renderTable();
+}
+
+init();
+    </script>
+
+</body></html>
