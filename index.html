@@ -3809,8 +3809,8 @@
 <nav class="dockbar">
             <button class="dockbar__btn" onclick="showAddModal()"><span class="ic">➕</span>Añadir</button>
             <button class="dockbar__btn dockbar__btn--primary" onclick="handleExportOrderPDF()"><span class="ic">📄</span>Pedido PDF</button>
-            <button class="dockbar__btn" onclick="toggleTheme()"><span class="ic" id="theme-icon">🌙</span></button>
-            <button class="dockbar__btn" onclick="backupData()">🌙</button>
+            <button class="dockbar__btn" onclick="toggleTheme()"><span class="ic" id="theme-icon">🌙</span>Tema</button>
+            <button class="dockbar__btn" onclick="backupData()"><span class="ic">💾</span>Backup</button>
         </nav>
 
     <!-- Input oculto restaurar -->
@@ -4574,20 +4574,18 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         (() => {
             const prefers = localStorage.getItem('theme');
             document.documentElement.setAttribute('data-theme', prefers || 'light');
-            const btn = document.querySelector('.dockbar__btn:last-child');
-            if (btn) {
-                const moon = '🌙';
-                const sun = '☀️';
-                btn.innerText = prefers === 'dark' ? sun : moon;
-                btn.addEventListener('click', () => {
-                    const current = document.documentElement.getAttribute('data-theme');
-                    const next = current === 'light' ? 'dark' : 'light';
-                    document.documentElement.setAttribute('data-theme', next);
-                    localStorage.setItem('theme', next);
-                    btn.innerText = next === 'dark' ? sun : moon;
-                });
-            }
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = (prefers === 'dark') ? '☀️' : '🌙';
         })();
+
+        function toggleTheme() {
+            const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = next === 'dark' ? '☀️' : '🌙';
+        }
+        window.toggleTheme = toggleTheme;
     </script>
 
 </body></html>
