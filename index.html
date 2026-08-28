@@ -658,6 +658,55 @@
             body, .topbar, .meta, .kpi, .item, .category__head, .search, .chip, .panel, .dockbar, .notice, table.inv, .mo-row, .mo-add input { transition: none; }
         }
 
+        /* Estilos para QR, Cámara y PWA */
+        .qr-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            padding: 16px;
+            border-radius: 14px;
+            border: 2px dashed var(--border);
+            margin: 12px 0;
+        }
+        .qr-box canvas, .qr-box img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .camera-container {
+            position: relative;
+            width: 100%;
+            height: 240px;
+            overflow: hidden;
+            border-radius: 12px;
+            background: #04121a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .camera-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .camera-scanline {
+            position: absolute;
+            top: 15%;
+            left: 8%;
+            right: 8%;
+            height: 2.5px;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            animation: scanAnim 2s infinite alternate ease-in-out;
+        }
+        @keyframes scanAnim {
+            from { top: 15%; }
+            to { top: 85%; }
+        }
+
         /* Impresión */
         @media print {
             .topbar, .dockbar, .search, .chipbar, .sortrow, .actions, .hero, .notice, .meta, .viewtoggle, .table-view__head, #mo-form, .overlay, .mo-add { display: none !important; }
@@ -667,6 +716,7 @@
             .kpi { break-inside: avoid; }
         }
     </style>
+    <link rel="manifest" href="manifest.webmanifest">
 </head>
 <body>
 
@@ -4130,6 +4180,16 @@
             </div>
         </section>
 
+        <!-- Sincronización y Trabajo en Equipo (QR / WhatsApp / PWA) -->
+        <section class="panel" style="margin-bottom:18px;">
+            <div class="panel__title"><span class="spark">🔄</span> Sincronización & Trabajo en Equipo</div>
+            <div class="actions" style="margin-bottom:0;">
+                <button class="act act--primary" onclick="openQRShareModal()"><span class="ic2">📲</span>Traspaso QR / WhatsApp</button>
+                <button class="act" onclick="openQRScanModal()"><span class="ic2">📷</span>Escanear QR / Cargar</button>
+                <button class="act" onclick="openPWAInstallModal()"><span class="ic2">📥</span>Instalar App (Offline)</button>
+            </div>
+        </section>
+
         <!-- Herramientas de Backup y Archivo -->
         <section class="panel" style="margin-bottom:18px;">
             <div class="panel__title"><span class="spark">💾</span> Copias de Seguridad & Exportación</div>
@@ -4175,7 +4235,7 @@
     <!-- Input oculto restaurar -->
     <input type="file" id="restore-input" accept=".json" style="display:none;">
 
-    <!-- ==================== MODAL ==================== -->
+    <!-- ==================== MODAL EDICIÓN ==================== -->
     <div class="overlay" id="overlay">
         <div class="sheet">
             <div class="sheet__head">
@@ -4209,11 +4269,108 @@
         </div>
     </div>
 
-    <!-- ==================== MODAL DE GUÍA & LEYENDA ==================== -->
+    <!-- ==================== MODAL TRASPASO QR / WHATSAPP ==================== -->
+    <div class="overlay" id="qr-share-modal">
+        <div class="sheet" style="max-width:440px;">
+            <div class="sheet__head">
+                <div class="sheet__title">📲 Traspaso de Guardia (QR / WhatsApp)</div>
+                <button class="sheet__close" onclick="closeQRShareModal()">✕</button>
+            </div>
+            <div style="text-align:center; padding:10px 4px 4px;">
+                <p style="font-size:13px; color:var(--text-soft); margin-bottom:8px;">
+                    Muestra este código QR a tu compañero para que lo escanee desde su app, o envíale el enlace de relevo por WhatsApp.
+                </p>
+                <div class="qr-box" id="qrcode-container">
+                    <div id="qrcode-canvas"></div>
+                </div>
+                <div style="font-size:12.5px; font-weight:700; color:var(--text-faint); margin-bottom:14px;">
+                    Unidad <strong id="qr-info-unidad" style="color:var(--text);">1315</strong> · <span id="qr-info-items" style="color:var(--primary);">0</span> materiales registrados
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <button type="button" class="btn btn--primary" style="height:44px; font-size:14px; font-weight:800;" onclick="shareViaWhatsApp()">
+                        💬 Enviar Enlace por WhatsApp
+                    </button>
+                    <button type="button" class="btn btn--ghost" style="height:42px; font-size:13px;" onclick="copySyncLink()">
+                        📋 Copiar Enlace de Sincronización
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL ESCANEAR QR ==================== -->
+    <div class="overlay" id="qr-scan-modal">
+        <div class="sheet" style="max-width:460px;">
+            <div class="sheet__head">
+                <div class="sheet__title">📷 Escanear QR / Recibir Datos</div>
+                <button class="sheet__close" onclick="closeQRScanModal()">✕</button>
+            </div>
+            <div style="padding:10px 4px 4px;">
+                <div class="camera-container" id="camera-box" style="display:none;">
+                    <video id="qr-video" playsinline></video>
+                    <canvas id="qr-canvas-hidden" style="display:none;"></canvas>
+                    <div class="camera-scanline"></div>
+                </div>
+                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <button type="button" class="btn btn--primary" id="btn-toggle-camera" style="flex:1; height:42px;" onclick="toggleQRCamera()">
+                        📷 Activar Cámara
+                    </button>
+                </div>
+                <div style="font-size:11.5px; font-weight:800; color:var(--text-faint); text-transform:uppercase; margin-bottom:6px;">
+                    O pegar enlace / código recibido:
+                </div>
+                <textarea id="manual-sync-input" placeholder="Pega aquí el enlace o código recibido por WhatsApp..." style="width:100%; height:75px; padding:10px; border-radius:10px; border:1px solid var(--border); font-family:inherit; font-size:12px; background:var(--surface-2); color:var(--text); outline:none; resize:none; margin-bottom:10px;"></textarea>
+                <button type="button" class="btn btn--accent" style="width:100%; height:42px; font-weight:800;" onclick="loadManualSyncText()">
+                    📥 Cargar e Importar Datos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL INSTALACIÓN PWA ==================== -->
+    <div class="overlay" id="pwa-install-modal">
+        <div class="sheet" style="max-width:500px;">
+            <div class="sheet__head">
+                <div class="sheet__title">📱 Instalar como App en tu Móvil</div>
+                <button class="sheet__close" onclick="closePWAInstallModal()">✕</button>
+            </div>
+            <div style="padding:10px 4px 4px; font-size:13.5px; line-height:1.5;">
+                <p style="color:var(--text-soft); margin-bottom:12px;">
+                    Instala <strong>Control Armario 1315</strong> en la pantalla de inicio de tu teléfono para abrirla a pantalla completa y usarla <strong>100% sin cobertura ni conexión a internet</strong>.
+                </p>
+                <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:12px; padding:12px; margin-bottom:10px;">
+                    <div style="font-weight:800; color:var(--text); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                        <span>🤖</span> En Android (Chrome / Edge / Firefox):
+                    </div>
+                    <p style="font-size:13px; color:var(--text-soft); margin-bottom:8px;">
+                        Pulsa el botón de abajo o abre el menú de tres puntos (<strong>⋮</strong>) y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a pantalla de inicio"</strong>.
+                    </p>
+                    <button type="button" class="btn btn--primary" id="btn-pwa-install-action" style="width:100%; height:42px; font-weight:800;" onclick="triggerPWAInstall()">
+                        📥 Instalar App Ahora
+                    </button>
+                </div>
+                <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:12px; padding:12px;">
+                    <div style="font-weight:800; color:var(--text); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                        <span>🍏</span> En iPhone / iPad (Safari):
+                    </div>
+                    <ol style="padding-left:18px; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:4px;">
+                        <li>Pulsa el botón <strong>Compartir</strong> (icono de cuadrado con flecha hacia arriba <strong>⬆️</strong> abajo en Safari).</li>
+                        <li>Baja en el menú y selecciona <strong>"Añadir a la pantalla de inicio" (➕)</strong>.</li>
+                        <li>Pulsa <strong>Añadir</strong> arriba a la derecha. ¡Listo!</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="sheet__actions" style="margin-top:10px;">
+                <button type="button" class="btn btn--ghost" onclick="closePWAInstallModal()" style="width:100%;">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL DE GUÍA & LEYENDA RENOVADO ==================== -->
     <div class="overlay" id="help-overlay">
         <div class="sheet" style="max-height:88vh; display:flex; flex-direction:column; max-width:680px;">
             <div class="sheet__head">
-                <div class="sheet__title">📖 Guía de Uso & Leyenda</div>
+                <div class="sheet__title">📖 Guía de Uso & Leyenda Completa</div>
                 <button class="sheet__close" onclick="closeHelpModal()">✕</button>
             </div>
             <div style="overflow-y:auto; padding:4px 4px 14px; font-size:13.5px; line-height:1.5;">
@@ -4259,7 +4416,7 @@
                 <!-- Sección 3: Solicitud Oficial de Pedidos en PDF -->
                 <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px; margin-bottom:12px;">
                     <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
-                        <span>📦</span> 3. Generación de Solicitudes Oficiales en PDF
+                        <span>📦</span> 3. Generación de Solicitudes Oficiales en PDF (1 Página)
                     </div>
                     <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
                         <li><strong>Solicitudes Limpias de 1 Página:</strong> Genera documentos oficiales concisos y claros listos para enviar a Farmacia o Almacén.</li>
@@ -4282,15 +4439,26 @@
                     </ul>
                 </div>
 
-                <!-- Sección 5: Datos y Copias de Seguridad -->
+                <!-- Sección 5: Traspaso de Guardia por QR / WhatsApp -->
+                <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px; margin-bottom:12px;">
+                    <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
+                        <span>🔄</span> 5. Traspaso Rápido de Datos (QR y WhatsApp)
+                    </div>
+                    <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
+                        <li><strong>📲 Código QR en Pantalla:</strong> Abre <em>Ajustes → Traspaso QR</em> para mostrar un código con todos los datos de la guardia. Tu compañero solo tiene que escanearlo con su cámara.</li>
+                        <li><strong>💬 Enlace Mágico por WhatsApp:</strong> Envía el enlace por WhatsApp y cuando tu compañero lo pulse, el armario de su móvil se sincronizará automáticamente.</li>
+                    </ul>
+                </div>
+
+                <!-- Sección 6: Datos y Modo Offline -->
                 <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px;">
                     <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
-                        <span>💾</span> 5. Guardado Automático y Copias de Seguridad
+                        <span>💾</span> 6. Guardado Automático & Modo Offline (PWA)
                     </div>
                     <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
                         <li><strong>Auto-guardado:</strong> Todo lo que edites se guarda al instante en la memoria de tu navegador (LocalStorage).</li>
-                        <li><strong>💾 Backup JSON:</strong> Descarga una copia de seguridad con todos tus datos cuando quieras.</li>
-                        <li><strong>📲 Descargar App:</strong> Puedes descargar el archivo HTML completo y llevarlo en un pendrive o abrirlo sin conexión a internet.</li>
+                        <li><strong>📱 Instalación PWA:</strong> Añade la app a la pantalla de inicio para usarla a pantalla completa y 100% sin cobertura ni conexión.</li>
+                        <li><strong>💾 Copias de Seguridad:</strong> Descarga backups en JSON, hojas de cálculo en CSV o el HTML autónomo.</li>
                     </ul>
                 </div>
 
@@ -4304,6 +4472,8 @@
     <!-- Librerías externas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" integrity="sha384-QQBwnzmpf8eCm7WvgJ/dpvJ51cajsTkfDMgOq5QVBZav9687X5xjlZo8zroLyU3+" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
     <script>
         // ============================================================
@@ -5630,6 +5800,342 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             await handleExportCombinedOrderPDF(true);
         }
 
+        // ============================================================
+        //  SINCRONIZACIÓN QR, ENLACE WHATSAPP & PWA
+        // ============================================================
+        function encodeAppDataForQR(data) {
+            const payload = {
+                v: 2,
+                u: data.metadata.unidad || '1315',
+                f: data.metadata.fecha || '',
+                n: data.metadata.nombre || '',
+                i: data.inventory.map(item => [
+                    item.material,
+                    item.idealStock,
+                    item.currentStock,
+                    item.expiry === 'sfc' ? '' : item.expiry,
+                    item.category
+                ]),
+                m: (data.monthlyOrders || []).map(mo => [
+                    mo.material,
+                    mo.quantity,
+                    mo.location || ''
+                ])
+            };
+            return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+        }
+
+        function decodeAppDataFromQR(str) {
+            try {
+                const decodedStr = decodeURIComponent(escape(atob(decodeURIComponent(str))));
+                const payload = JSON.parse(decodedStr);
+                if (payload && payload.i && Array.isArray(payload.i)) {
+                    const inventory = payload.i.map(arr => {
+                        const ideal = Number(arr[1]) || 0;
+                        const current = Number(arr[2]) || 0;
+                        return {
+                            material: arr[0],
+                            idealStock: ideal,
+                            currentStock: current,
+                            order: Math.max(0, ideal - current),
+                            expiry: arr[3] || 'sfc',
+                            category: arr[4] || 'General'
+                        };
+                    });
+                    const monthlyOrders = (payload.m || []).map(arr => ({
+                        material: arr[0],
+                        quantity: Number(arr[1]) || 1,
+                        location: arr[2] || ''
+                    }));
+                    return {
+                        metadata: {
+                            version: Date.now(),
+                            fecha: payload.f || new Date().toISOString().split('T')[0],
+                            unidad: payload.u || '1315',
+                            nombre: payload.n || ''
+                        },
+                        inventory,
+                        monthlyOrders
+                    };
+                }
+            } catch(e) {
+                console.error("Error decodificando QR:", e);
+            }
+            return null;
+        }
+
+        let qrInstance = null;
+        function openQRShareModal() {
+            const modal = document.getElementById('qr-share-modal');
+            const canvasContainer = document.getElementById('qrcode-canvas');
+            const infoUnidad = document.getElementById('qr-info-unidad');
+            const infoItems = document.getElementById('qr-info-items');
+
+            if (infoUnidad) infoUnidad.textContent = appData.metadata.unidad || '1315';
+            if (infoItems) infoItems.textContent = appData.inventory ? appData.inventory.length : 0;
+
+            const syncUrl = getSyncUrl();
+
+            if (canvasContainer) {
+                canvasContainer.innerHTML = '';
+                try {
+                    if (window.QRCode) {
+                        qrInstance = new QRCode(canvasContainer, {
+                            text: syncUrl,
+                            width: 200,
+                            height: 200,
+                            colorDark: '#04121a',
+                            colorLight: '#ffffff',
+                            correctLevel: QRCode.CorrectLevel.M
+                        });
+                    } else {
+                        canvasContainer.innerHTML = '<div style="padding:20px;color:var(--danger);font-size:12px;">Librería QR no disponible</div>';
+                    }
+                } catch(e) {
+                    console.error(e);
+                }
+            }
+            if (modal) modal.classList.add('is-open');
+        }
+
+        function closeQRShareModal() {
+            const modal = document.getElementById('qr-share-modal');
+            if (modal) modal.classList.remove('is-open');
+        }
+
+        function getSyncUrl() {
+            const payloadStr = encodeAppDataForQR(appData);
+            const baseUrl = window.location.href.split('#')[0];
+            return `${baseUrl}#sync=${payloadStr}`;
+        }
+
+        function copySyncLink() {
+            const url = getSyncUrl();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    toast('📋 Enlace de sincronización copiado al portapapeles.', 'success');
+                }).catch(() => {
+                    fallbackCopy(url);
+                });
+            } else {
+                fallbackCopy(url);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            toast('📋 Enlace copiado.', 'success');
+        }
+
+        function shareViaWhatsApp() {
+            const url = getSyncUrl();
+            const un = appData.metadata.unidad || '1315';
+            const nom = appData.metadata.nombre || 'Dotación';
+            const msg = `🚑 *RELEVO DE GUARDIA · ARMARIO ${un}*\n📅 Fecha: ${appData.metadata.fecha || ''}\n👤 Responsable: ${nom}\n\n📲 Pulsa este enlace para cargar y sincronizar los datos en tu móvil:\n${url}`;
+            const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+            window.open(waUrl, '_blank');
+        }
+
+        let qrVideoTrack = null;
+        let qrScanActive = false;
+
+        function openQRScanModal() {
+            const modal = document.getElementById('qr-scan-modal');
+            if (modal) modal.classList.add('is-open');
+            const input = document.getElementById('manual-sync-input');
+            if (input) input.value = '';
+        }
+
+        function closeQRScanModal() {
+            stopQRCamera();
+            const modal = document.getElementById('qr-scan-modal');
+            if (modal) modal.classList.remove('is-open');
+        }
+
+        async function toggleQRCamera() {
+            if (qrScanActive) {
+                stopQRCamera();
+            } else {
+                await startQRCamera();
+            }
+        }
+
+        async function startQRCamera() {
+            const video = document.getElementById('qr-video');
+            const box = document.getElementById('camera-box');
+            const btn = document.getElementById('btn-toggle-camera');
+            if (!video) return;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                video.srcObject = stream;
+                video.setAttribute('playsinline', true);
+                await video.play();
+                if (box) box.style.display = 'flex';
+                if (btn) {
+                    btn.textContent = '🛑 Detener Cámara';
+                    btn.className = 'btn btn--danger';
+                }
+                qrVideoTrack = stream.getVideoTracks()[0];
+                qrScanActive = true;
+                requestAnimationFrame(scanQRCodeLoop);
+            } catch(err) {
+                toast('No se pudo acceder a la cámara. Revisa los permisos o usa el campo de texto.', 'danger');
+            }
+        }
+
+        function stopQRCamera() {
+            qrScanActive = false;
+            if (qrVideoTrack) {
+                qrVideoTrack.stop();
+                qrVideoTrack = null;
+            }
+            const video = document.getElementById('qr-video');
+            if (video) video.srcObject = null;
+            const box = document.getElementById('camera-box');
+            if (box) box.style.display = 'none';
+            const btn = document.getElementById('btn-toggle-camera');
+            if (btn) {
+                btn.textContent = '📷 Activar Cámara';
+                btn.className = 'btn btn--primary';
+                btn.style.flex = '1';
+                btn.style.height = '42px';
+            }
+        }
+
+        function scanQRCodeLoop() {
+            if (!qrScanActive) return;
+            const video = document.getElementById('qr-video');
+            const canvas = document.getElementById('qr-canvas-hidden');
+            if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+                if (canvas) {
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                    if (window.jsQR) {
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: 'dontInvert'
+                        });
+                        if (code && code.data) {
+                            stopQRCamera();
+                            processReceivedSyncData(code.data);
+                            return;
+                        }
+                    }
+                }
+            }
+            if (qrScanActive) {
+                requestAnimationFrame(scanQRCodeLoop);
+            }
+        }
+
+        function loadManualSyncText() {
+            const input = document.getElementById('manual-sync-input');
+            const val = input ? input.value.trim() : '';
+            if (!val) {
+                toast('Por favor, pega el enlace o código de sincronización.', 'warn');
+                return;
+            }
+            processReceivedSyncData(val);
+        }
+
+        function processReceivedSyncData(rawText) {
+            let payloadStr = rawText;
+            if (payloadStr.includes('#sync=')) {
+                payloadStr = payloadStr.split('#sync=')[1];
+            }
+            const imported = decodeAppDataFromQR(payloadStr);
+            if (!imported) {
+                toast('Código o enlace inválido. No se pudieron extraer datos.', 'danger');
+                return;
+            }
+            closeQRScanModal();
+            const u = imported.metadata.unidad || '1315';
+            const nom = imported.metadata.nombre || 'Compañero';
+            const numItems = imported.inventory ? imported.inventory.length : 0;
+            if (confirm(`📥 ¿Cargar datos del armario recibidos?\n\n• Unidad / Armario: ${u}\n• Responsable: ${nom}\n• Insumos: ${numItems}\n\nEsto actualizará el stock de tu móvil.`)) {
+                appData = imported;
+                saveData();
+                renderAll();
+                toast(`✅ Armario de Unidad ${u} sincronizado con éxito.`, 'success');
+            }
+        }
+
+        function checkUrlSync() {
+            if (window.location.hash && window.location.hash.startsWith('#sync=')) {
+                const payload = window.location.hash.replace('#sync=', '');
+                const imported = decodeAppDataFromQR(payload);
+                if (imported) {
+                    const u = imported.metadata.unidad || '1315';
+                    const nom = imported.metadata.nombre || 'Compañero';
+                    setTimeout(() => {
+                        if (confirm(`📥 Has recibido datos de relevo de guardia:\n\n• Unidad / Armario: ${u}\n• Responsable: ${nom}\n\n¿Deseas cargar y actualizar tu armario con estos datos?`)) {
+                            appData = imported;
+                            saveData();
+                            renderAll();
+                            toast(`✅ Datos de Unidad ${u} cargados correctamente.`, 'success');
+                        }
+                        try {
+                            history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                        } catch(e) {}
+                    }, 400);
+                }
+            }
+        }
+
+        let deferredPrompt = null;
+        function initPWAInstall() {
+            window.addEventListener('beforeinstallprompt', e => {
+                e.preventDefault();
+                deferredPrompt = e;
+                const btn = document.getElementById('btn-pwa-install-action');
+                if (btn) btn.style.display = 'block';
+            });
+        }
+
+        function openPWAInstallModal() {
+            const modal = document.getElementById('pwa-install-modal');
+            if (modal) modal.classList.add('is-open');
+        }
+
+        function closePWAInstallModal() {
+            const modal = document.getElementById('pwa-install-modal');
+            if (modal) modal.classList.remove('is-open');
+        }
+
+        async function triggerPWAInstall() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const choice = await deferredPrompt.userChoice;
+                if (choice.outcome === 'accepted') {
+                    toast('✅ Aplicación instalada correctamente.', 'success');
+                }
+                deferredPrompt = null;
+                closePWAInstallModal();
+            } else {
+                toast('Para instalar en iPhone: pulsa Compartir (⬆️) y "Añadir a pantalla de inicio".', 'info');
+            }
+        }
+
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+                navigator.serviceWorker.register('./sw.js').then(() => {
+                    console.log('Service Worker registrado.');
+                }).catch(err => {
+                    console.log('SW error:', err);
+                });
+            }
+        }
+
         // ---- Toast ----
         function toast(msg, type) {
             let t = document.querySelector('.toast');
@@ -5714,12 +6220,27 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.handleExportCombinedOrderPDF = handleExportCombinedOrderPDF;
         window.handleDownloadCombinedOrderPDFDirect = handleDownloadCombinedOrderPDFDirect;
         window.switchTab = switchTab;
+        window.openQRShareModal = openQRShareModal;
+        window.closeQRShareModal = closeQRShareModal;
+        window.copySyncLink = copySyncLink;
+        window.shareViaWhatsApp = shareViaWhatsApp;
+        window.openQRScanModal = openQRScanModal;
+        window.closeQRScanModal = closeQRScanModal;
+        window.toggleQRCamera = toggleQRCamera;
+        window.loadManualSyncText = loadManualSyncText;
+        window.openPWAInstallModal = openPWAInstallModal;
+        window.closePWAInstallModal = closePWAInstallModal;
+        window.triggerPWAInstall = triggerPWAInstall;
 
         loadData();
         setup();
         renderAll();
         setView(window.innerWidth >= 1024 ? 'table' : 'cards');
         tick();
+        checkUrlSync();
+        initPWAInstall();
+        registerServiceWorker();
+
         document.getElementById('today').textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         (() => {
             const prefers = localStorage.getItem('theme');

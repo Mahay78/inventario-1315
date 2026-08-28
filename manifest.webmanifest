@@ -1,0 +1,19 @@
+{
+  "name": "Control Armario 1315",
+  "short_name": "Armario 1315",
+  "description": "Gestión de stock, caducidades y solicitudes de material sanitario para Unidad 1315",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4faf5",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='115' fill='%2310b981'/%3E%3Crect x='224' y='128' width='64' height='256' rx='20' fill='white'/%3E%3Crect x='128' y='224' width='256' height='64' rx='20' fill='white'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
