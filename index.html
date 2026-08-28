@@ -717,7 +717,7 @@
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <button type="button" class="hero__btn" onclick="switchTab('tab-pedidos')">📦 Pedidos (<span id="btn-pedidos-count">0</span> uds)</button>
-                    <button type="button" class="btn btn--ghost" style="height:44px;padding:0 12px;font-size:13px;border-radius:12px;font-weight:700;display:inline-flex;align-items:center;gap:4px;" onclick="handleDownloadMonthlyOrderPDFDirect()" title="Descargar directamente el PDF de Pedido Mensual">📅 Descargar Pedido Mensual</button>
+                    <button type="button" class="btn btn--primary" style="height:44px;padding:0 12px;font-size:13px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg, var(--accent), var(--primary));color:#04121a;" onclick="handleDownloadCombinedOrderPDFDirect()" title="Descargar ambos pedidos (Ambulancia + Mensual) en un único PDF">📑 PDF Conjunto (Ambos en 1)</button>
                 </div>
             </section>
 
@@ -4005,25 +4005,30 @@
          ============================================================ -->
     <div id="tab-pedidos" class="tab-content">
         
-        <!-- Bloque 1: Pedido Ambulancia (Generado del Inventario) -->
+        <!-- Bloque 1: Pedido Ambulancia (Exclusivo Inventario Guardia) -->
         <section class="panel" style="margin-bottom:18px;">
             <div class="panel__title">
-                <span class="spark">🚑</span> Pedido de Ambulancia (Guardia)
+                <span class="spark">🚑</span> 1. Pedido de Ambulancia (Guardia)
                 <span class="badge" style="margin-left:auto;background:var(--primary-dim);color:var(--primary);font-weight:800;padding:4px 8px;border-radius:8px;" id="order-tab-badge">0 uds</span>
             </div>
             <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
-                Materiales faltantes calculados automáticamente según el stock de cada compartimento de la ambulancia.
+                Materiales faltantes calculados <strong>exclusivamente</strong> del inventario diario de la ambulancia.
             </p>
             <div id="order-ambulance-preview" style="margin-bottom:14px;"></div>
-            <button class="hero__btn" style="width:100%;justify-content:center;height:48px;font-size:15px;" onclick="handleExportOrderPDF()">
-                📄 Generar PDF Pedido Ambulancia (Totales + Desglose)
-            </button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="hero__btn" style="flex:2 1 200px;justify-content:center;height:48px;font-size:14.5px;display:flex;align-items:center;gap:6px;" onclick="handleDownloadOrderPDFDirect()">
+                    📄 Descargar PDF Pedido Ambulancia
+                </button>
+                <button type="button" class="btn btn--ghost" style="flex:1 1 140px;justify-content:center;height:48px;font-size:14px;display:flex;align-items:center;gap:6px;" onclick="handleExportOrderPDF(false)">
+                    📲 Compartir
+                </button>
+            </div>
         </section>
 
         <!-- Bloque 2: Pedido Mensual Independiente -->
-        <section class="panel" id="panel-pedido-mensual">
+        <section class="panel" id="panel-pedido-mensual" style="margin-bottom:18px;">
             <div class="panel__title" style="flex-wrap:wrap; gap:10px;">
-                <span style="display:flex;align-items:center;gap:6px;"><span class="spark">📅</span> Pedido Mensual Independiente</span>
+                <span style="display:flex;align-items:center;gap:6px;"><span class="spark">📅</span> 2. Pedido Mensual Independiente</span>
                 <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <span class="badge" style="background:var(--accent-dim);color:var(--accent);font-weight:700;padding:4px 8px;border-radius:8px;" id="mo-stats">0 insumos · 0 uds</span>
                     <button type="button" class="btn btn--ghost" style="height:32px;padding:0 10px;font-size:12px;cursor:pointer;" onclick="clearMonthlyOrder()" title="Limpiar lista">🔄 Limpiar</button>
@@ -4067,10 +4072,29 @@
             </div>
 
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="hero__btn" style="flex:2 1 200px;justify-content:center;height:48px;font-size:15px;display:flex;align-items:center;gap:6px;" onclick="handleDownloadMonthlyOrderPDFDirect()">
+                <button type="button" class="hero__btn" style="flex:2 1 200px;justify-content:center;height:48px;font-size:14.5px;display:flex;align-items:center;gap:6px;" onclick="handleDownloadMonthlyOrderPDFDirect()">
                     📥 Descargar PDF Pedido Mensual
                 </button>
                 <button type="button" class="btn btn--ghost" style="flex:1 1 140px;justify-content:center;height:48px;font-size:14px;display:flex;align-items:center;gap:6px;" onclick="handleExportMonthlyOrderPDF(false)">
+                    📲 Compartir
+                </button>
+            </div>
+        </section>
+
+        <!-- Bloque 3: PEDIDO CONJUNTO (AMBOS PEDIDOS EN UN SOLO PDF) -->
+        <section class="panel" style="border: 2px solid var(--primary); background: color-mix(in srgb, var(--surface) 92%, var(--primary) 8%);">
+            <div class="panel__title">
+                <span class="spark">📑</span> 3. Pedido Conjunto (Ambos en 1 solo PDF)
+                <span class="badge" style="margin-left:auto;background:var(--accent-dim);color:var(--accent);font-weight:800;padding:4px 8px;border-radius:8px;" id="combined-badge">0 uds totales</span>
+            </div>
+            <p style="font-size:13.5px;color:var(--text);margin-bottom:14px;line-height:1.4;">
+                Combina automáticamente el <strong>Pedido de Ambulancia</strong> y el <strong>Pedido Mensual</strong> en <strong>un único documento PDF</strong> para Farmacia y Almacén.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn btn--primary" style="flex:2 1 220px;justify-content:center;height:52px;font-size:15px;font-weight:800;display:flex;align-items:center;gap:6px;background:linear-gradient(135deg, var(--accent), var(--primary));color:#04121a;box-shadow:var(--shadow-soft);" onclick="handleDownloadCombinedOrderPDFDirect()">
+                    📑 Descargar PDF Conjunto (Ambos Pedidos)
+                </button>
+                <button type="button" class="btn btn--ghost" style="flex:1 1 140px;justify-content:center;height:52px;font-size:14px;display:flex;align-items:center;gap:6px;" onclick="handleExportCombinedOrderPDF(false)">
                     📲 Compartir
                 </button>
             </div>
@@ -4110,6 +4134,8 @@
         <section class="panel" style="margin-bottom:18px;">
             <div class="panel__title"><span class="spark">💾</span> Copias de Seguridad & Exportación</div>
             <div class="actions" style="margin-bottom:0;">
+                <button class="act act--primary" onclick="handleDownloadCombinedOrderPDFDirect()"><span class="ic2">📑</span>PDF Conjunto</button>
+                <button class="act" onclick="handleDownloadOrderPDFDirect()"><span class="ic2">🚑</span>PDF Ambulancia</button>
                 <button class="act" onclick="handleDownloadMonthlyOrderPDFDirect()"><span class="ic2">📅</span>PDF Mensual</button>
                 <button class="act" onclick="backupData()"><span class="ic2">💾</span>Backup JSON</button>
                 <button class="act" onclick="document.getElementById('restore-input').click()"><span class="ic2">📂</span>Restaurar</button>
@@ -4860,12 +4886,19 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             // Actualizar badges de pedido
             const needItems = appData.inventory.filter(i => i.order > 0);
             const totalUnitsToOrder = needItems.reduce((a, i) => a + i.order, 0);
+            const totalUnitsMonthly = (appData.monthlyOrders || []).reduce((a, r) => a + monthlyUnits(r), 0);
+
             const badgeTop = document.getElementById('tab-pedidos-badge');
-            if (badgeTop) badgeTop.textContent = totalUnitsToOrder;
+            if (badgeTop) badgeTop.textContent = totalUnitsToOrder + totalUnitsMonthly;
+
             const btnCount = document.getElementById('btn-pedidos-count');
             if (btnCount) btnCount.textContent = totalUnitsToOrder;
+
             const orderTabBadge = document.getElementById('order-tab-badge');
             if (orderTabBadge) orderTabBadge.textContent = totalUnitsToOrder + ' uds';
+
+            const combinedBadge = document.getElementById('combined-badge');
+            if (combinedBadge) combinedBadge.textContent = `${totalUnitsToOrder + totalUnitsMonthly} uds totales`;
         }
 
         function toggleCategory(btn) { btn.closest('.category').classList.toggle('is-open'); }
@@ -5122,7 +5155,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             await exportAndSharePDF(doc, `Inventario_${appData.metadata.unidad || 'Unidad'}.pdf`, 'Inventario', `Inventario de unidad ${appData.metadata.unidad}`);
         }
 
-        async function handleExportOrderPDF() {
+        async function handleExportOrderPDF(forceDirectDownload = false) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pageWidth = doc.internal.pageSize.getWidth();
@@ -5135,7 +5168,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const rawItems = appData.inventory.filter(it => it.order > 0);
 
             if (!rawItems.length) {
-                toast('No hay material marcado para pedir.', 'warn');
+                toast('No hay material pendiente de pedir en la ambulancia.', 'warn');
                 return;
             }
 
@@ -5174,12 +5207,12 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(14);
             doc.setTextColor(255, 255, 255);
-            doc.text('SOLICITUD Y REPOSICIÓN DE MATERIAL SANITARIO', margin + 6, margin + 9);
+            doc.text('PEDIDO DE REPOSICIÓN · AMBULANCIA (GUARDIA)', margin + 6, margin + 9);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
             doc.setTextColor(255, 255, 255);
-            doc.text('Control Consolidado: Ambulancia & Reposición (Unidad ' + (appData.metadata.unidad || '1315') + ')', margin + 6, margin + 16);
+            doc.text('Reposición de Material Diario de Dotación (Unidad ' + (appData.metadata.unidad || '1315') + ')', margin + 6, margin + 16);
 
             // 2. Metadatos
             let currentY = margin + 27;
@@ -5365,8 +5398,19 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             }
 
             const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
-            await exportAndSharePDF(doc, `Pedido_Consolidado_${un}.pdf`, 'Pedido Consolidado', `Pedido de material para unidad ${appData.metadata.unidad}`);
-            toast('✅ PDF de Pedido generado con éxito.', 'success');
+            const fileName = `Pedido_Ambulancia_${un}.pdf`;
+
+            if (forceDirectDownload) {
+                doc.save(fileName);
+                toast('✅ PDF de Pedido de Ambulancia descargado.', 'success');
+            } else {
+                await exportAndSharePDF(doc, fileName, 'Pedido Ambulancia (Guardia)', `Pedido de reposición para ambulancia ${appData.metadata.unidad}`);
+                toast('✅ PDF de Pedido de Ambulancia generado con éxito.', 'success');
+            }
+        }
+
+        async function handleDownloadOrderPDFDirect() {
+            await handleExportOrderPDF(true);
         }
 
         async function handleExportMonthlyOrderPDF(forceDirectDownload = false) {
@@ -5567,6 +5611,245 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             await handleExportMonthlyOrderPDF(true);
         }
 
+        async function handleExportCombinedOrderPDF(forceDirectDownload = false) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 14;
+            const primaryColor = [16, 185, 129]; // #10b981
+            const secondaryColor = [21, 101, 192]; // #1565c0
+            const darkTextColor = [30, 41, 59];
+
+            const ambulanceItems = appData.inventory.filter(it => it.order > 0);
+            const monthlyItems = appData.monthlyOrders || [];
+
+            if (!ambulanceItems.length && !monthlyItems.length) {
+                toast('No hay material marcado ni en la ambulancia ni en el pedido mensual.', 'warn');
+                return;
+            }
+
+            // Consolidar todos los materiales (Ambulancia + Mensual)
+            const map = new Map();
+
+            // 1. Insumos de la ambulancia
+            ambulanceItems.forEach(it => {
+                const name = (it.material || '').trim();
+                const key = name.toLowerCase();
+                const loc = (it.category || 'Ambulancia').trim();
+                const cant = Number(it.order) || 0;
+                if (!map.has(key)) {
+                    map.set(key, { material: name, total: 0, cantAmbulancia: 0, cantMensual: 0, destinos: [] });
+                }
+                const entry = map.get(key);
+                entry.total += cant;
+                entry.cantAmbulancia += cant;
+                entry.destinos.push({ origen: '🚑 Ambulancia', ubicacion: loc, cantidad: cant });
+            });
+
+            // 2. Insumos del pedido mensual
+            monthlyItems.forEach(r => {
+                const name = (r.material || '').trim();
+                const key = name.toLowerCase();
+                const loc = (r.location || 'Armario / Almacén').trim();
+                const cant = Number(monthlyUnits(r)) || 0;
+                if (!map.has(key)) {
+                    map.set(key, { material: name, total: 0, cantAmbulancia: 0, cantMensual: 0, destinos: [] });
+                }
+                const entry = map.get(key);
+                entry.total += cant;
+                entry.cantMensual += cant;
+
+                const ex = entry.destinos.find(d => d.origen === '📅 Mensual' && d.ubicacion.toLowerCase() === loc.toLowerCase());
+                if (ex) {
+                    ex.cantidad += cant;
+                } else {
+                    entry.destinos.push({ origen: '📅 Mensual', ubicacion: loc, cantidad: cant });
+                }
+            });
+
+            const consolidated = Array.from(map.values());
+            const totalUnitsAmbulance = ambulanceItems.reduce((a, i) => a + i.order, 0);
+            const totalUnitsMonthly = monthlyItems.reduce((a, r) => a + monthlyUnits(r), 0);
+            const totalUnitsGlobal = totalUnitsAmbulance + totalUnitsMonthly;
+
+            // 1. ENCABEZADO
+            doc.setFillColor(...primaryColor);
+            doc.rect(margin, margin, pageWidth - (margin * 2), 24, 'F');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.setTextColor(255, 255, 255);
+            doc.text('PEDIDO CONJUNTO · AMBULANCIA + MENSUAL', margin + 6, margin + 10);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(`Consolidado Global: Almacén Central & Farmacia • Unidad ${appData.metadata.unidad || '1315'}`, margin + 6, margin + 18);
+
+            // 2. METADATOS
+            let currentY = margin + 29;
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 20, 2, 2, 'FD');
+
+            doc.setFontSize(8.5);
+            doc.setTextColor(...darkTextColor);
+
+            const col1X = margin + 4;
+            const col2X = margin + (pageWidth - margin * 2) / 2 + 4;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('FECHA:', col1X, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), col1X + 15, currentY + 6);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('SOLICITANTE:', col1X, currentY + 14);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.nombre || '—', col1X + 26, currentY + 14);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('TOTAL ARTÍCULOS:', col2X, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${consolidated.length} insumos distintos`, col2X + 32, currentY + 6);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('TOTAL UNIDADES:', col2X, currentY + 14);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...primaryColor);
+            doc.text(`${totalUnitsGlobal} uds (🚑 Guardia: ${totalUnitsAmbulance} • 📅 Mensual: ${totalUnitsMonthly})`, col2X + 31, currentY + 14);
+
+            currentY += 26;
+
+            // 3. SECCIÓN 1: TOTALES CONSOLIDADOS PARA ALMACÉN
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.setTextColor(...primaryColor);
+            doc.text('1. RESUMEN CONSOLIDADO TOTAL PARA ALMACÉN / FARMACIA', margin, currentY);
+            currentY += 4.5;
+
+            const tableTotales = consolidated.map((c, i) => {
+                const origenTxt = [];
+                if (c.cantAmbulancia > 0) origenTxt.push(`Ambulancia: ${c.cantAmbulancia}`);
+                if (c.cantMensual > 0) origenTxt.push(`Mensual: ${c.cantMensual}`);
+                return [
+                    i + 1,
+                    c.material,
+                    c.total,
+                    origenTxt.join(' • ')
+                ];
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['#', 'Material / Insumo Solicitado', 'Total a Pedir', 'Procedencia (Desglose de Pedidos)']],
+                body: tableTotales,
+                theme: 'striped',
+                headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 70, fontStyle: 'bold' },
+                    2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', textColor: primaryColor },
+                    3: { cellWidth: 'auto', fontSize: 7.5, textColor: [70, 80, 95] }
+                },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                margin: { left: margin, right: margin }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 8;
+
+            // 4. SECCIÓN 2: DESGLOSE POR DESTINO & REPOSICIÓN
+            if (currentY > pageHeight - 75) { doc.addPage(); currentY = margin + 5; }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.setTextColor(...secondaryColor);
+            doc.text('2. DESGLOSE DETALLADO DE REPOSICIÓN POR DESTINO', margin, currentY);
+
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Guía para ubicar y verificar el material repartido (Checklist [ ✓ ])', margin, currentY + 4);
+            currentY += 6;
+
+            const tableDesglose = [];
+            let cIdx = 1;
+            consolidated.forEach(item => {
+                item.destinos.forEach((dest, dIdx) => {
+                    tableDesglose.push([
+                        dIdx === 0 ? cIdx++ : '',
+                        dIdx === 0 ? item.material : '  ↳ (continuación)',
+                        dest.origen,
+                        dest.ubicacion,
+                        dest.cantidad,
+                        '[   ]'
+                    ]);
+                });
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['#', 'Material', 'Tipo Pedido', 'Ubicación / Compartimento', 'Cant.', 'Check']],
+                body: tableDesglose,
+                theme: 'grid',
+                headStyles: { fillColor: secondaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 55 },
+                    2: { cellWidth: 32, fontSize: 7.5, fontStyle: 'bold' },
+                    3: { cellWidth: 'auto', fontStyle: 'bold' },
+                    4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
+                    5: { cellWidth: 16, halign: 'center', fontStyle: 'bold', textColor: [120, 120, 120] }
+                },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                alternateRowStyles: { fillColor: [244, 247, 250] },
+                margin: { left: margin, right: margin }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 8;
+
+            // 5. CUADRO DE OBSERVACIONES
+            if (currentY > pageHeight - 40) { doc.addPage(); currentY = margin + 8; }
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9.5);
+            doc.setTextColor(...darkTextColor);
+            doc.text('OBSERVACIONES / NOTAS:', margin, currentY);
+            currentY += 3.5;
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(250, 252, 255);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 24, 2, 2, 'FD');
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineDashPattern([2, 2], 0);
+            doc.line(margin + 4, currentY + 8, pageWidth - margin - 4, currentY + 8);
+            doc.line(margin + 4, currentY + 15, pageWidth - margin - 4, currentY + 15);
+            doc.line(margin + 4, currentY + 21, pageWidth - margin - 4, currentY + 21);
+            doc.setLineDashPattern([], 0);
+
+            const totalPages = doc.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(140, 150, 160);
+                doc.text(`Página ${i} de ${totalPages} • ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+            }
+
+            const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
+            const fileName = `Pedido_Conjunto_Ambulancia_y_Mensual_${un}.pdf`;
+
+            if (forceDirectDownload) {
+                doc.save(fileName);
+                toast('✅ PDF de Pedido Conjunto descargado.', 'success');
+            } else {
+                await exportAndSharePDF(doc, fileName, 'Pedido Conjunto (Ambulancia + Mensual)', `Pedido conjunto de material para unidad ${appData.metadata.unidad}`);
+                toast('✅ PDF de Pedido Conjunto generado con éxito.', 'success');
+            }
+        }
+
+        async function handleDownloadCombinedOrderPDFDirect() {
+            await handleExportCombinedOrderPDF(true);
+        }
+
         // ---- Toast ----
         function toast(msg, type) {
             let t = document.querySelector('.toast');
@@ -5645,8 +5928,11 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.downloadApp = downloadApp;
         window.handleExportInventoryPDF = handleExportInventoryPDF;
         window.handleExportOrderPDF = handleExportOrderPDF;
+        window.handleDownloadOrderPDFDirect = handleDownloadOrderPDFDirect;
         window.handleExportMonthlyOrderPDF = handleExportMonthlyOrderPDF;
         window.handleDownloadMonthlyOrderPDFDirect = handleDownloadMonthlyOrderPDFDirect;
+        window.handleExportCombinedOrderPDF = handleExportCombinedOrderPDF;
+        window.handleDownloadCombinedOrderPDFDirect = handleDownloadCombinedOrderPDFDirect;
         window.switchTab = switchTab;
 
         loadData();
