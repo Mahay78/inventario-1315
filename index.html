@@ -5801,27 +5801,59 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         }
 
         // ============================================================
-        //  SINCRONIZACIÓN QR, ENLACE WHATSAPP & PWA
+        //  SINCRONIZACIÓN QR, ENLACE WHATSAPP & PWA (COMPACTO V3)
         // ============================================================
         function encodeAppDataForQR(data) {
+            const base = parseCSV(csvData);
+            const baseMap = new Map();
+            base.inventory.forEach((it, idx) => {
+                baseMap.set((it.material || '').toLowerCase(), { idx, item: it });
+            });
+
+            const stocks = [];
+            const changedExpiries = {};
+            const customItems = [];
+
+            (data.inventory || []).forEach(it => {
+                const key = (it.material || '').toLowerCase();
+                if (baseMap.has(key)) {
+                    const info = baseMap.get(key);
+                    stocks[info.idx] = Number(it.currentStock) || 0;
+                    if (it.expiry && it.expiry !== info.item.expiry) {
+                        changedExpiries[info.idx] = it.expiry;
+                    }
+                } else {
+                    customItems.push([
+                        it.material,
+                        it.idealStock,
+                        it.currentStock,
+                        it.expiry || 'sfc',
+                        it.category || 'General'
+                    ]);
+                }
+            });
+
+            for (let i = 0; i < base.inventory.length; i++) {
+                if (stocks[i] === undefined) {
+                    stocks[i] = base.inventory[i].currentStock;
+                }
+            }
+
             const payload = {
-                v: 2,
+                v: 3,
                 u: data.metadata.unidad || '1315',
                 f: data.metadata.fecha || '',
                 n: data.metadata.nombre || '',
-                i: data.inventory.map(item => [
-                    item.material,
-                    item.idealStock,
-                    item.currentStock,
-                    item.expiry === 'sfc' ? '' : item.expiry,
-                    item.category
-                ]),
+                s: stocks.join(','),
+                e: Object.keys(changedExpiries).length > 0 ? changedExpiries : undefined,
+                c: customItems.length > 0 ? customItems : undefined,
                 m: (data.monthlyOrders || []).map(mo => [
                     mo.material,
                     mo.quantity,
                     mo.location || ''
                 ])
             };
+
             return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
         }
 
@@ -5829,7 +5861,61 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             try {
                 const decodedStr = decodeURIComponent(escape(atob(decodeURIComponent(str))));
                 const payload = JSON.parse(decodedStr);
-                if (payload && payload.i && Array.isArray(payload.i)) {
+                if (!payload) return null;
+
+                if (payload.v === 3 || payload.s !== undefined) {
+                    const base = parseCSV(csvData);
+                    const stockArr = String(payload.s || '').split(',').map(n => Number(n) || 0);
+                    const changedExp = payload.e || {};
+
+                    const newInventory = base.inventory.map((item, idx) => {
+                        const current = (stockArr[idx] !== undefined) ? stockArr[idx] : item.currentStock;
+                        const exp = changedExp[idx] !== undefined ? changedExp[idx] : item.expiry;
+                        return {
+                            category: item.category,
+                            material: item.material,
+                            idealStock: item.idealStock,
+                            currentStock: current,
+                            order: Math.max(0, item.idealStock - current),
+                            expiry: exp
+                        };
+                    });
+
+                    if (Array.isArray(payload.c)) {
+                        payload.c.forEach(c => {
+                            const ideal = Number(c[1]) || 0;
+                            const current = Number(c[2]) || 0;
+                            newInventory.push({
+                                material: c[0],
+                                idealStock: ideal,
+                                currentStock: current,
+                                order: Math.max(0, ideal - current),
+                                expiry: c[3] || 'sfc',
+                                category: c[4] || 'General'
+                            });
+                        });
+                    }
+
+                    const monthlyOrders = (payload.m || []).map(arr => ({
+                        material: arr[0],
+                        quantity: Number(arr[1]) || 1,
+                        location: arr[2] || ''
+                    }));
+
+                    return {
+                        metadata: {
+                            version: Date.now(),
+                            fecha: payload.f || new Date().toISOString().split('T')[0],
+                            unidad: payload.u || '1315',
+                            nombre: payload.n || ''
+                        },
+                        inventory: newInventory,
+                        monthlyOrders
+                    };
+                }
+
+                // Retrocompatibilidad
+                if (payload.i && Array.isArray(payload.i)) {
                     const inventory = payload.i.map(arr => {
                         const ideal = Number(arr[1]) || 0;
                         const current = Number(arr[2]) || 0;
@@ -5878,21 +5964,31 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             if (canvasContainer) {
                 canvasContainer.innerHTML = '';
+                let generated = false;
                 try {
                     if (window.QRCode) {
                         qrInstance = new QRCode(canvasContainer, {
                             text: syncUrl,
-                            width: 200,
-                            height: 200,
+                            width: 220,
+                            height: 220,
                             colorDark: '#04121a',
                             colorLight: '#ffffff',
-                            correctLevel: QRCode.CorrectLevel.M
+                            correctLevel: QRCode.CorrectLevel.L
                         });
-                    } else {
-                        canvasContainer.innerHTML = '<div style="padding:20px;color:var(--danger);font-size:12px;">Librería QR no disponible</div>';
+                        generated = true;
                     }
                 } catch(e) {
-                    console.error(e);
+                    console.warn("QRCode JS error, usando fallback:", e);
+                }
+
+                if (!generated || !canvasContainer.hasChildNodes()) {
+                    const img = document.createElement('img');
+                    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=4&data=${encodeURIComponent(syncUrl)}`;
+                    img.alt = 'Código QR de Sincronización';
+                    img.style.width = '200px';
+                    img.style.height = '200px';
+                    img.style.borderRadius = '8px';
+                    canvasContainer.appendChild(img);
                 }
             }
             if (modal) modal.classList.add('is-open');
