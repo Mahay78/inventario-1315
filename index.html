@@ -4062,14 +4062,14 @@
     <div id="tab-pedidos" class="tab-content">
         
         <!-- ============================================================
-             CHECKLIST INTERACTIVO: GUÍA DE REPOSICIÓN EN AMBULANCIA
+             CHECKLIST INTERACTIVO: GUÍA DE REPOSICIÓN EN ARMARIO
              ============================================================ -->
         <section class="reposition-card" id="reposition-section">
             <div class="reposition-header">
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="font-size:22px;">🚑</span>
+                    <span style="font-size:22px;">🗄️</span>
                     <div>
-                        <div style="font-weight:800;font-size:15px;color:var(--text);">Modo Reposición en Ambulancia</div>
+                        <div style="font-weight:800;font-size:15px;color:var(--text);">Modo Reposición en Armario</div>
                         <div style="font-size:12px;color:var(--text-soft);" id="reposition-subtitle">Checklist interactivo para colocar material en cada compartimento</div>
                     </div>
                 </div>
@@ -4087,7 +4087,7 @@
             <!-- Filtros de reposición -->
             <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;">
                 <button type="button" class="chip is-active" id="rep-filter-all" onclick="setRepFilter('all')">Todos los Destinos</button>
-                <button type="button" class="chip" id="rep-filter-amb" onclick="setRepFilter('amb')">🚑 Solo Ambulancia</button>
+                <button type="button" class="chip" id="rep-filter-amb" onclick="setRepFilter('amb')">🗄️ Solo Armario</button>
                 <button type="button" class="chip" id="rep-filter-mo" onclick="setRepFilter('mo')">📅 Solo Mensual</button>
             </div>
 
@@ -4095,19 +4095,19 @@
             <div id="reposition-list"></div>
         </section>
 
-        <!-- Bloque 1: Pedido Ambulancia (Exclusivo Inventario Guardia) -->
+        <!-- Bloque 1: Pedido Armario (Exclusivo Inventario) -->
         <section class="panel" style="margin-bottom:18px;">
             <div class="panel__title">
-                <span class="spark">🚑</span> 1. Pedido de Ambulancia (Guardia)
+                <span class="spark">🗄️</span> 1. Pedido de Armario
                 <span class="badge" style="margin-left:auto;background:var(--primary-dim);color:var(--primary);font-weight:800;padding:4px 8px;border-radius:8px;" id="order-tab-badge">0 uds</span>
             </div>
             <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
-                Materiales faltantes calculados <strong>exclusivamente</strong> del inventario diario de la ambulancia.
+                Materiales faltantes calculados <strong>exclusivamente</strong> del inventario del armario.
             </p>
             <div id="order-ambulance-preview" style="margin-bottom:14px;"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button type="button" class="hero__btn" style="flex:2 1 200px;justify-content:center;height:48px;font-size:14.5px;display:flex;align-items:center;gap:6px;" onclick="handleDownloadOrderPDFDirect()">
-                    📄 Descargar PDF Pedido Ambulancia
+                    📄 Descargar PDF Pedido Armario
                 </button>
                 <button type="button" class="btn btn--ghost" style="flex:1 1 140px;justify-content:center;height:48px;font-size:14px;display:flex;align-items:center;gap:6px;" onclick="handleExportOrderPDF(false)">
                     📲 Compartir
@@ -4178,7 +4178,7 @@
                 <span class="badge" style="margin-left:auto;background:var(--accent-dim);color:var(--accent);font-weight:800;padding:4px 8px;border-radius:8px;" id="combined-badge">0 uds totales</span>
             </div>
             <p style="font-size:13.5px;color:var(--text);margin-bottom:14px;line-height:1.4;">
-                Combina automáticamente el <strong>Pedido de Ambulancia</strong> y el <strong>Pedido Mensual</strong> en <strong>un único documento PDF</strong> para Farmacia y Almacén.
+                Combina automáticamente el <strong>Pedido de Armario</strong> y el <strong>Pedido Mensual</strong> en <strong>un único documento PDF</strong> para Farmacia y Almacén.
             </p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button type="button" class="btn btn--primary" style="flex:2 1 220px;justify-content:center;height:52px;font-size:15px;font-weight:800;display:flex;align-items:center;gap:6px;background:linear-gradient(135deg, var(--accent), var(--primary));color:#04121a;box-shadow:var(--shadow-soft);" onclick="handleDownloadCombinedOrderPDFDirect()">
@@ -4225,7 +4225,7 @@
             <div class="panel__title"><span class="spark">💾</span> Copias de Seguridad & Exportación</div>
             <div class="actions" style="margin-bottom:0;">
                 <button class="act act--primary" onclick="handleDownloadCombinedOrderPDFDirect()"><span class="ic2">📑</span>PDF Conjunto</button>
-                <button class="act" onclick="handleDownloadOrderPDFDirect()"><span class="ic2">🚑</span>PDF Ambulancia</button>
+                <button class="act" onclick="handleDownloadOrderPDFDirect()"><span class="ic2">🗄️</span>PDF Armario</button>
                 <button class="act" onclick="handleDownloadMonthlyOrderPDFDirect()"><span class="ic2">📅</span>PDF Mensual</button>
                 <button class="act" onclick="backupData()"><span class="ic2">💾</span>Backup JSON</button>
                 <button class="act" onclick="document.getElementById('restore-input').click()"><span class="ic2">📂</span>Restaurar</button>
@@ -4909,7 +4909,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             if (!previewEl) return;
             const items = appData.inventory.filter(it => it.order > 0);
             if (!items.length) {
-                previewEl.innerHTML = '<div class="empty-state" style="padding:14px;background:var(--surface-2);border-radius:12px;color:var(--ok);font-weight:700;">✅ No hay material pendiente de pedir. Stock de la ambulancia al 100%.</div>';
+                previewEl.innerHTML = '<div class="empty-state" style="padding:14px;background:var(--surface-2);border-radius:12px;color:var(--ok);font-weight:700;">✅ No hay material pendiente de pedir. Stock del armario al 100%.</div>';
                 return;
             }
 
@@ -5260,7 +5260,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const rawItems = appData.inventory.filter(it => it.order > 0);
 
             if (!rawItems.length) {
-                toast('No hay material pendiente de pedir en la ambulancia.', 'warn');
+                toast('No hay material pendiente de pedir en el armario.', 'warn');
                 return;
             }
 
@@ -5286,12 +5286,12 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(13);
             doc.setTextColor(255, 255, 255);
-            doc.text('SOLICITUD DE MATERIAL SANITARIO · AMBULANCIA', margin + 6, margin + 9);
+            doc.text('SOLICITUD DE MATERIAL SANITARIO · ARMARIO', margin + 6, margin + 9);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
             doc.setTextColor(255, 255, 255);
-            doc.text('Reposición de Guardia · Unidad ' + (appData.metadata.unidad || '1315') + ' • Solicitud para Almacén / Farmacia', margin + 6, margin + 16);
+            doc.text('Reposición de Armario · Unidad ' + (appData.metadata.unidad || '1315') + ' • Solicitud para Almacén / Farmacia', margin + 6, margin + 16);
 
             // 2. Metadatos
             let currentY = margin + 27;
@@ -5400,14 +5400,14 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             }
 
             const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
-            const fileName = `Solicitud_Material_Ambulancia_${un}.pdf`;
+            const fileName = `Solicitud_Material_Armario_${un}.pdf`;
 
             if (forceDirectDownload) {
                 doc.save(fileName);
-                toast('✅ PDF de Solicitud descargado.', 'success');
+                toast('✅ PDF de Solicitud de Armario descargado.', 'success');
             } else {
-                await exportAndSharePDF(doc, fileName, 'Solicitud Material Ambulancia', `Solicitud de reposición para ambulancia ${appData.metadata.unidad}`);
-                toast('✅ PDF de Solicitud generado con éxito.', 'success');
+                await exportAndSharePDF(doc, fileName, 'Solicitud Material Armario', `Solicitud de reposición para armario de unidad ${appData.metadata.unidad}`);
+                toast('✅ PDF de Solicitud de Armario generado con éxito.', 'success');
             }
         }
 
@@ -5567,14 +5567,14 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const monthlyItems = appData.monthlyOrders || [];
 
             if (!ambulanceItems.length && !monthlyItems.length) {
-                toast('No hay material marcado ni en la ambulancia ni en el pedido mensual.', 'warn');
+                toast('No hay material marcado ni en el armario ni en el pedido mensual.', 'warn');
                 return;
             }
 
-            // Consolidar todos los materiales (Ambulancia + Mensual)
+            // Consolidar todos los materiales (Armario + Mensual)
             const map = new Map();
 
-            // 1. Insumos de la ambulancia
+            // 1. Insumos del armario
             ambulanceItems.forEach(it => {
                 const name = (it.material || '').trim();
                 const key = name.toLowerCase();
@@ -5613,7 +5613,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
-            doc.text(`Reposición Ambulancia + Mensual • Unidad ${appData.metadata.unidad || '1315'} • Solicitud para Almacén / Farmacia`, margin + 6, margin + 16);
+            doc.text(`Reposición Armario + Mensual • Unidad ${appData.metadata.unidad || '1315'} • Solicitud para Almacén / Farmacia`, margin + 6, margin + 16);
 
             // 2. METADATOS
             let currentY = margin + 27;
@@ -5653,7 +5653,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             const tableTotales = consolidated.map((c, i) => {
                 const origenTxt = [];
-                if (c.cantAmbulancia > 0) origenTxt.push(`Ambulancia: ${c.cantAmbulancia}`);
+                if (c.cantAmbulancia > 0) origenTxt.push(`Armario: ${c.cantAmbulancia}`);
                 if (c.cantMensual > 0) origenTxt.push(`Mensual: ${c.cantMensual}`);
                 return [
                     i + 1,
@@ -5775,9 +5775,9 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             loadRepChecked();
 
             const ambulanceItems = appData.inventory.filter(it => it.order > 0).map(it => ({
-                origen: 'Ambulancia',
+                origen: 'Armario',
                 material: it.material,
-                ubicacion: it.category || 'Ambulancia (General)',
+                ubicacion: it.category || 'Armario (General)',
                 cantidad: it.order
             }));
 
@@ -5814,8 +5814,8 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             let html = '';
             groupsMap.forEach((items, loc) => {
-                const isLocAmbulance = items.some(i => i.origen === 'Ambulancia');
-                const icon = isLocAmbulance ? '🚑' : '📅';
+                const isLocArmario = items.some(i => i.origen === 'Armario');
+                const icon = isLocArmario ? '🗄️' : '📅';
                 html += `
                     <div class="reposition-group">
                         <div class="reposition-group__title">
