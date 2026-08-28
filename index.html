@@ -716,7 +716,8 @@
                     <div class="hero__date">Responsable: <strong id="hero-responsable">Fran/ Roberto  </strong> · Unidad <strong id="hero-unidad">1315</strong></div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                    <button type="button" class="hero__btn" onclick="switchTab('tab-pedidos')">📦 Ver Pedido (<span id="btn-pedidos-count">0</span> uds)</button>
+                    <button type="button" class="hero__btn" onclick="switchTab('tab-pedidos')">📦 Pedidos (<span id="btn-pedidos-count">0</span> uds)</button>
+                    <button type="button" class="btn btn--ghost" style="height:44px;padding:0 12px;font-size:13px;border-radius:12px;font-weight:700;display:inline-flex;align-items:center;gap:4px;" onclick="handleDownloadMonthlyOrderPDFDirect()" title="Descargar directamente el PDF de Pedido Mensual">📅 Descargar Pedido Mensual</button>
                 </div>
             </section>
 
@@ -4065,9 +4066,14 @@
                 <div id="mo-consolidated-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px;"></div>
             </div>
 
-            <button class="hero__btn" style="width:100%;justify-content:center;height:48px;font-size:15px;" onclick="handleExportMonthlyOrderPDF()">
-                📄 Exportar PDF Pedido Mensual (Totales + Desglose)
-            </button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="hero__btn" style="flex:2 1 200px;justify-content:center;height:48px;font-size:15px;display:flex;align-items:center;gap:6px;" onclick="handleDownloadMonthlyOrderPDFDirect()">
+                    📥 Descargar PDF Pedido Mensual
+                </button>
+                <button type="button" class="btn btn--ghost" style="flex:1 1 140px;justify-content:center;height:48px;font-size:14px;display:flex;align-items:center;gap:6px;" onclick="handleExportMonthlyOrderPDF(false)">
+                    📲 Compartir
+                </button>
+            </div>
         </section>
 
     </div><!-- Fin #tab-pedidos -->
@@ -4104,6 +4110,7 @@
         <section class="panel" style="margin-bottom:18px;">
             <div class="panel__title"><span class="spark">💾</span> Copias de Seguridad & Exportación</div>
             <div class="actions" style="margin-bottom:0;">
+                <button class="act" onclick="handleDownloadMonthlyOrderPDFDirect()"><span class="ic2">📅</span>PDF Mensual</button>
                 <button class="act" onclick="backupData()"><span class="ic2">💾</span>Backup JSON</button>
                 <button class="act" onclick="document.getElementById('restore-input').click()"><span class="ic2">📂</span>Restaurar</button>
                 <button class="act" onclick="exportToCSV()"><span class="ic2">📊</span>Excel / CSV</button>
@@ -5362,7 +5369,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             toast('✅ PDF de Pedido generado con éxito.', 'success');
         }
 
-        async function handleExportMonthlyOrderPDF() {
+        async function handleExportMonthlyOrderPDF(forceDirectDownload = false) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pageWidth = doc.internal.pageSize.getWidth();
@@ -5419,41 +5426,55 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             doc.setFontSize(8.5);
             doc.setTextColor(...darkTextColor);
             doc.setFont('helvetica', 'bold');
-            doc.text('Fecha:', margin + 4, currentY + 6);
+            doc.text('FECHA:', margin + 4, currentY + 6);
             doc.setFont('helvetica', 'normal');
             doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), margin + 18, currentY + 6);
+
             doc.setFont('helvetica', 'bold');
-            doc.text('Responsable:', margin + 80, currentY + 6);
+            doc.text('SOLICITANTE / RESPONSABLE:', margin + 70, currentY + 6);
             doc.setFont('helvetica', 'normal');
-            doc.text(appData.metadata.nombre || 'No especificado', margin + 104, currentY + 6);
+            doc.text(appData.metadata.nombre || '—', margin + 125, currentY + 6);
 
-            currentY += 22;
+            const totalArt = consolidated.length;
+            const totalUds = consolidated.reduce((a, c) => a + c.totalCantidad, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.text('TOTAL ARTÍCULOS:', margin + 4, currentY + 12);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${totalArt} distintos`, margin + 35, currentY + 12);
 
-            // Tabla 1: Consolidado
+            doc.setFont('helvetica', 'bold');
+            doc.text('TOTAL UNIDADES:', margin + 70, currentY + 12);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...primaryColor);
+            doc.text(`${totalUds} unidades`, margin + 102, currentY + 12);
+
+            currentY += 21;
+
+            // SECCIÓN 1: TOTALES
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10.5);
             doc.setTextColor(...primaryColor);
-            doc.text('1. TOTALES PEDIDO MENSUAL (CONSOLIDADO)', margin, currentY);
-            currentY += 5;
+            doc.text('1. RESUMEN CONSOLIDADO PARA ALMACÉN / FARMACIA (TOTALES)', margin, currentY);
+            currentY += 4.5;
 
-            const tableData = consolidated.map((item, idx) => [
-                idx + 1,
-                item.material,
-                item.totalCantidad,
-                item.destinos.map(d => `${d.ubicacion} (${d.cantidad})`).join(' • ')
+            const tableTotales = consolidated.map((c, i) => [
+                i + 1,
+                c.material,
+                c.totalCantidad,
+                c.destinos.map(d => `${d.ubicacion}: ${d.cantidad}`).join('; ')
             ]);
 
             doc.autoTable({
                 startY: currentY,
-                head: [['#', 'Insumo / Material Solicitado', 'Cant. Total', 'Destinos Involucrados']],
-                body: tableData,
-                theme: 'grid',
+                head: [['#', 'Material / Insumo', 'Total Pedir', 'Desglose Rápido por Ubicaciones']],
+                body: tableTotales,
+                theme: 'striped',
                 headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
                 columnStyles: {
                     0: { cellWidth: 10, halign: 'center' },
                     1: { cellWidth: 70, fontStyle: 'bold' },
                     2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', textColor: primaryColor },
-                    3: { cellWidth: 'auto', fontSize: 7.5 }
+                    3: { cellWidth: 'auto', fontSize: 7.5, textColor: [70, 80, 95] }
                 },
                 bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
@@ -5462,21 +5483,21 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             currentY = doc.lastAutoTable.finalY + 8;
 
-            // Tabla 2: Desglose
+            // SECCIÓN 2: DESGLOSE POR UBICACIÓN
             if (currentY > pageHeight - 75) { doc.addPage(); currentY = margin + 5; }
 
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10.5);
             doc.setTextColor(...secondaryColor);
-            doc.text('2. DESGLOSE DETALLADO POR UBICACIÓN', margin, currentY);
-            currentY += 5;
+            doc.text('2. DESGLOSE DETALLADO DE REPOSICIÓN POR UBICACIÓN', margin, currentY);
+            currentY += 4.5;
 
             const tableDesglose = [];
-            let c = 1;
+            let cIdx = 1;
             consolidated.forEach(item => {
                 item.destinos.forEach((dest, dIdx) => {
                     tableDesglose.push([
-                        dIdx === 0 ? c++ : '',
+                        dIdx === 0 ? cIdx++ : '',
                         dIdx === 0 ? item.material : '  ↳ (continuación)',
                         dest.ubicacion,
                         dest.cantidad,
@@ -5531,8 +5552,19 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             }
 
             const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
-            await exportAndSharePDF(doc, `Pedido_Mensual_${un}.pdf`, 'Pedido Mensual', `Pedido Mensual de unidad ${appData.metadata.unidad}`);
-            toast('✅ PDF de Pedido Mensual generado con éxito.', 'success');
+            const fileName = `Pedido_Mensual_${un}.pdf`;
+
+            if (forceDirectDownload) {
+                doc.save(fileName);
+                toast('✅ PDF de Pedido Mensual descargado.', 'success');
+            } else {
+                await exportAndSharePDF(doc, fileName, 'Pedido Mensual', `Pedido Mensual de unidad ${appData.metadata.unidad}`);
+                toast('✅ PDF de Pedido Mensual generado con éxito.', 'success');
+            }
+        }
+
+        async function handleDownloadMonthlyOrderPDFDirect() {
+            await handleExportMonthlyOrderPDF(true);
         }
 
         // ---- Toast ----
@@ -5614,6 +5646,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.handleExportInventoryPDF = handleExportInventoryPDF;
         window.handleExportOrderPDF = handleExportOrderPDF;
         window.handleExportMonthlyOrderPDF = handleExportMonthlyOrderPDF;
+        window.handleDownloadMonthlyOrderPDFDirect = handleDownloadMonthlyOrderPDFDirect;
         window.switchTab = switchTab;
 
         loadData();
