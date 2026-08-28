@@ -566,6 +566,7 @@
             </div>
         </div>
         <div class="topbar__actions">
+            <button class="icon-btn" title="¿Cómo funciona? (Guía y Leyenda)" onclick="openHelpModal()" style="font-size:16px;">❓</button>
             <button class="icon-btn icon-btn--accent" title="Descargar app con tus datos" onclick="downloadApp()">📲</button>
         </div>
     </header>
@@ -578,7 +579,10 @@
                 <div class="hero__date">Hoy · <strong id="today">sábado, 15 de agosto de 2026</strong></div>
                 <div class="hero__date">Responsable: <strong id="hero-responsable">Fran/ Roberto  </strong></div>
             </div>
-            <button class="hero__btn" onclick="handleExportOrderPDF()">📄 PDF Pedido</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button type="button" class="btn btn--ghost" style="height:44px;padding:0 12px;font-size:13px;border-radius:12px;font-weight:700;" onclick="openHelpModal()">❓ ¿Cómo funciona?</button>
+                <button class="hero__btn" onclick="handleExportOrderPDF()">📄 PDF Pedido</button>
+            </div>
         </section>
 
         <!-- Metadatos editables -->
@@ -3936,12 +3940,13 @@
     </main>
 
     <!-- ==================== DOCKBAR (móvil) ==================== -->
-<nav class="dockbar">
-            <button class="dockbar__btn" onclick="showAddModal()"><span class="ic">➕</span>Añadir</button>
-            <button class="dockbar__btn dockbar__btn--primary" onclick="handleExportOrderPDF()"><span class="ic">📄</span>Pedido PDF</button>
-            <button class="dockbar__btn" onclick="toggleTheme()"><span class="ic" id="theme-icon">🌙</span>Tema</button>
-            <button class="dockbar__btn" onclick="backupData()"><span class="ic">💾</span>Backup</button>
-        </nav>
+    <nav class="dockbar">
+        <button class="dockbar__btn" onclick="showAddModal()"><span class="ic">➕</span>Añadir</button>
+        <button class="dockbar__btn dockbar__btn--primary" onclick="handleExportOrderPDF()"><span class="ic">📄</span>Pedido PDF</button>
+        <button class="dockbar__btn" onclick="openHelpModal()"><span class="ic">❓</span>Guía</button>
+        <button class="dockbar__btn" onclick="toggleTheme()"><span class="ic" id="theme-icon">🌙</span>Tema</button>
+        <button class="dockbar__btn" onclick="backupData()"><span class="ic">💾</span>Backup</button>
+    </nav>
 
     <!-- Input oculto restaurar -->
     <input type="file" id="restore-input" accept=".json" style="display:none;">
@@ -3977,6 +3982,99 @@
                     <button type="submit" class="btn btn--primary" id="modal-save">Guardar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL DE GUÍA & LEYENDA ==================== -->
+    <div class="overlay" id="help-overlay">
+        <div class="sheet" style="max-height:88vh; display:flex; flex-direction:column; max-width:680px;">
+            <div class="sheet__head">
+                <div class="sheet__title">📖 Guía de Uso & Leyenda</div>
+                <button class="sheet__close" onclick="closeHelpModal()">✕</button>
+            </div>
+            <div style="overflow-y:auto; padding:4px 4px 14px; font-size:13.5px; line-height:1.5;">
+                
+                <!-- Sección 1: Semáforos y Estados -->
+                <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px; margin-bottom:12px;">
+                    <div style="font-weight:800; font-size:14px; margin-bottom:10px; color:var(--text); display:flex; align-items:center; gap:6px;">
+                        <span>🚦</span> 1. Leyenda de Estados y Semáforos
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
+                        <div style="background:var(--surface); padding:8px 10px; border-radius:10px; border:1px solid var(--border-soft);">
+                            <div style="font-weight:700; color:var(--ok);">✅ OK</div>
+                            <div style="font-size:12px; color:var(--text-faint);">Stock completo y fecha de caducidad en regla.</div>
+                        </div>
+                        <div style="background:var(--surface); padding:8px 10px; border-radius:10px; border:1px solid var(--border-soft);">
+                            <div style="font-weight:700; color:var(--accent);">🟦 Stock bajo</div>
+                            <div style="font-size:12px; color:var(--text-faint);">Tengo menos unidades de las fijadas como ideales.</div>
+                        </div>
+                        <div style="background:var(--surface); padding:8px 10px; border-radius:10px; border:1px solid var(--border-soft);">
+                            <div style="font-weight:700; color:var(--warn);">⚠️ Próximo a caducar</div>
+                            <div style="font-size:12px; color:var(--text-faint);">Caduca en los próximos 30 días. Revisar reposición.</div>
+                        </div>
+                        <div style="background:var(--surface); padding:8px 10px; border-radius:10px; border:1px solid var(--border-soft);">
+                            <div style="font-weight:700; color:var(--danger);">⛔ Caducado</div>
+                            <div style="font-size:12px; color:var(--text-faint);">Material caducado. Retirar y sustituir de inmediato.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Control Diario de Inventario -->
+                <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px; margin-bottom:12px;">
+                    <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
+                        <span>📋</span> 2. Control Diario de Inventario
+                    </div>
+                    <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
+                        <li><strong>Botones Stepper (− y +):</strong> Ajusta el stock actual con un solo toque desde tu móvil.</li>
+                        <li><strong>Cálculo Automático de "Pido":</strong> La cantidad a pedir se calcula al instante: <code>Tener (Stock Ideal) − Tengo (Stock Actual)</code>.</li>
+                        <li><strong>✏️ Editar / 🗑️ Eliminar:</strong> Pulsa el lápiz para editar el stock ideal, categoría o caducidad de cualquier material.</li>
+                        <li><strong>➕ Añadir Material:</strong> Usa el botón para incluir nuevos insumos en cualquier compartimento.</li>
+                    </ul>
+                </div>
+
+                <!-- Sección 3: Pedidos Inteligentes y PDF -->
+                <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px; margin-bottom:12px;">
+                    <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
+                        <span>📦</span> 3. Generación de Pedidos y PDF Consolidado
+                    </div>
+                    <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
+                        <li><strong>Consolidación Automática:</strong> Si pides gasas para el Botiquín Circulatorio (50) y para el Cajón de Curas (10), el sistema calcula el total de 60 unidades para farmacia/almacén.</li>
+                        <li><strong>Sección 1 del PDF (Almacén / Compras):</strong> Tabla de totales consolidados por insumo para agilizar la preparación del pedido.</li>
+                        <li><strong>Sección 2 del PDF (Reposición):</strong> Desglose detallado por ubicación con casillas de verificación <code>[ ]</code> para marcar físicamente al reponer en la ambulancia.</li>
+                        <li><strong>Sección 3 del PDF (Notas):</strong> Cuadro con líneas para escribir observaciones a mano.</li>
+                        <li><strong>Compartir por WhatsApp / Email:</strong> En teléfonos móviles, puedes enviar el PDF generado directamente a tus compañeros o supervisores con el menú nativo.</li>
+                    </ul>
+                </div>
+
+                <!-- Sección 4: Pedido Mensual Independiente -->
+                <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px; margin-bottom:12px;">
+                    <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
+                        <span>📅</span> 4. Pedido Mensual Independiente
+                    </div>
+                    <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
+                        <li>Diseñado para pedidos periódicos o materiales no fijos.</li>
+                        <li>Añade materiales y ubicaciones con autocompletado inteligente.</li>
+                        <li>Usa el botón <strong>📋 Duplicar</strong> para pedir el mismo insumo para otra ubicación distinta en un toque.</li>
+                        <li>Previsualiza en tiempo real el resumen de totales consolidados antes de exportar.</li>
+                    </ul>
+                </div>
+
+                <!-- Sección 5: Datos y Copias de Seguridad -->
+                <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px;">
+                    <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
+                        <span>💾</span> 5. Guardado Automático y Copias de Seguridad
+                    </div>
+                    <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
+                        <li><strong>Auto-guardado:</strong> Todo lo que edites se guarda al instante en la memoria de tu navegador (LocalStorage).</li>
+                        <li><strong>💾 Backup JSON:</strong> Descarga una copia de seguridad con todos tus datos cuando quieras.</li>
+                        <li><strong>📲 Descargar App:</strong> Puedes descargar el archivo HTML completo y llevarlo en un pendrive o abrirlo sin conexión a internet.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="sheet__actions" style="margin-top:10px;">
+                <button type="button" class="btn btn--primary" onclick="closeHelpModal()" style="width:100%;">Entendido, ¡gracias!</button>
+            </div>
         </div>
     </div>
 
@@ -4532,6 +4630,8 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             document.getElementById('overlay').classList.add('is-open');
         }
         function closeModal() { document.getElementById('overlay').classList.remove('is-open'); editIndex = -1; }
+        function openHelpModal() { document.getElementById('help-overlay').classList.add('is-open'); }
+        function closeHelpModal() { document.getElementById('help-overlay').classList.remove('is-open'); }
 
         function showAddModal() {
             document.getElementById('f-material').value = '';
@@ -5226,6 +5326,8 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.openEditModal = openEditModal;
         window.showAddModal = showAddModal;
         window.closeModal = closeModal;
+        window.openHelpModal = openHelpModal;
+        window.closeHelpModal = closeHelpModal;
         window.deleteMonthlyItem = deleteMonthlyItem;
         window.setMonthlyQty = setMonthlyQty;
         window.stepMonthlyQty = stepMonthlyQty;
