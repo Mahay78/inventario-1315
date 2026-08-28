@@ -5218,7 +5218,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             let currentY = margin + 27;
             doc.setDrawColor(203, 213, 225);
             doc.setFillColor(248, 250, 252);
-            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 20, 2, 2, 'FD');
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 14, 2, 2, 'FD');
 
             doc.setFontSize(8.5);
             doc.setTextColor(...darkTextColor);
@@ -5232,21 +5232,16 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), col1X + 15, currentY + 6);
 
             doc.setFont('helvetica', 'bold');
-            doc.text('Unidad / Indicativo:', col1X, currentY + 14);
+            doc.text('Unidad / Indicativo:', col1X, currentY + 11);
             doc.setFont('helvetica', 'normal');
-            doc.text(appData.metadata.unidad || '1315', col1X + 32, currentY + 14);
+            doc.text(appData.metadata.unidad || '1315', col1X + 32, currentY + 11);
 
             doc.setFont('helvetica', 'bold');
-            doc.text('Responsable:', col2X, currentY + 6);
+            doc.text('Solicitante / Responsable:', col2X, currentY + 6);
             doc.setFont('helvetica', 'normal');
-            doc.text(appData.metadata.nombre || 'No especificado', col2X + 24, currentY + 6);
+            doc.text(appData.metadata.nombre || '—', col2X + 42, currentY + 6);
 
-            doc.setFont('helvetica', 'bold');
-            doc.text('Total Artículos:', col2X, currentY + 14);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`${consolidated.length} insumos (${rawItems.reduce((a, i) => a + i.order, 0)} uds)`, col2X + 25, currentY + 14);
-
-            currentY += 26;
+            currentY += 19;
 
             // 3. SECCIÓN 1: TOTALES CONSOLIDADOS (PARA FARMACIA / ALMACÉN)
             doc.setFont('helvetica', 'bold');
@@ -5466,33 +5461,29 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             let currentY = margin + 27;
             doc.setDrawColor(203, 213, 225);
             doc.setFillColor(248, 250, 252);
-            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 16, 2, 2, 'FD');
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 14, 2, 2, 'FD');
             doc.setFontSize(8.5);
             doc.setTextColor(...darkTextColor);
-            doc.setFont('helvetica', 'bold');
-            doc.text('FECHA:', margin + 4, currentY + 6);
-            doc.setFont('helvetica', 'normal');
-            doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), margin + 18, currentY + 6);
+
+            const col1X = margin + 4;
+            const col2X = margin + (pageWidth - margin * 2) / 2 + 4;
 
             doc.setFont('helvetica', 'bold');
-            doc.text('SOLICITANTE / RESPONSABLE:', margin + 70, currentY + 6);
+            doc.text('FECHA:', col1X, currentY + 6);
             doc.setFont('helvetica', 'normal');
-            doc.text(appData.metadata.nombre || '—', margin + 125, currentY + 6);
-
-            const totalArt = consolidated.length;
-            const totalUds = consolidated.reduce((a, c) => a + c.totalCantidad, 0);
-            doc.setFont('helvetica', 'bold');
-            doc.text('TOTAL ARTÍCULOS:', margin + 4, currentY + 12);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`${totalArt} distintos`, margin + 35, currentY + 12);
+            doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), col1X + 15, currentY + 6);
 
             doc.setFont('helvetica', 'bold');
-            doc.text('TOTAL UNIDADES:', margin + 70, currentY + 12);
+            doc.text('UNIDAD / INDICATIVO:', col1X, currentY + 11);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...primaryColor);
-            doc.text(`${totalUds} unidades`, margin + 102, currentY + 12);
+            doc.text(appData.metadata.unidad || '1315', col1X + 35, currentY + 11);
 
-            currentY += 21;
+            doc.setFont('helvetica', 'bold');
+            doc.text('SOLICITANTE / RESPONSABLE:', col2X, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.nombre || '—', col2X + 46, currentY + 6);
+
+            currentY += 19;
 
             // SECCIÓN 1: TOTALES
             doc.setFont('helvetica', 'bold');
@@ -5644,7 +5635,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 const entry = map.get(key);
                 entry.total += cant;
                 entry.cantAmbulancia += cant;
-                entry.destinos.push({ origen: '🚑 Ambulancia', ubicacion: loc, cantidad: cant });
+                entry.destinos.push({ origen: 'Ambulancia', ubicacion: loc, cantidad: cant });
             });
 
             // 2. Insumos del pedido mensual
@@ -5660,11 +5651,11 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 entry.total += cant;
                 entry.cantMensual += cant;
 
-                const ex = entry.destinos.find(d => d.origen === '📅 Mensual' && d.ubicacion.toLowerCase() === loc.toLowerCase());
+                const ex = entry.destinos.find(d => d.origen === 'Mensual' && d.ubicacion.toLowerCase() === loc.toLowerCase());
                 if (ex) {
                     ex.cantidad += cant;
                 } else {
-                    entry.destinos.push({ origen: '📅 Mensual', ubicacion: loc, cantidad: cant });
+                    entry.destinos.push({ origen: 'Mensual', ubicacion: loc, cantidad: cant });
                 }
             });
 
@@ -5690,7 +5681,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             let currentY = margin + 29;
             doc.setDrawColor(203, 213, 225);
             doc.setFillColor(248, 250, 252);
-            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 20, 2, 2, 'FD');
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 14, 2, 2, 'FD');
 
             doc.setFontSize(8.5);
             doc.setTextColor(...darkTextColor);
@@ -5704,22 +5695,16 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), col1X + 15, currentY + 6);
 
             doc.setFont('helvetica', 'bold');
-            doc.text('SOLICITANTE:', col1X, currentY + 14);
+            doc.text('UNIDAD / INDICATIVO:', col1X, currentY + 11);
             doc.setFont('helvetica', 'normal');
-            doc.text(appData.metadata.nombre || '—', col1X + 26, currentY + 14);
+            doc.text(appData.metadata.unidad || '1315', col1X + 35, currentY + 11);
 
             doc.setFont('helvetica', 'bold');
-            doc.text('TOTAL ARTÍCULOS:', col2X, currentY + 6);
+            doc.text('SOLICITANTE / RESPONSABLE:', col2X, currentY + 6);
             doc.setFont('helvetica', 'normal');
-            doc.text(`${consolidated.length} insumos distintos`, col2X + 32, currentY + 6);
+            doc.text(appData.metadata.nombre || '—', col2X + 46, currentY + 6);
 
-            doc.setFont('helvetica', 'bold');
-            doc.text('TOTAL UNIDADES:', col2X, currentY + 14);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...primaryColor);
-            doc.text(`${totalUnitsGlobal} uds (🚑 Guardia: ${totalUnitsAmbulance} • 📅 Mensual: ${totalUnitsMonthly})`, col2X + 31, currentY + 14);
-
-            currentY += 26;
+            currentY += 19;
 
             // 3. SECCIÓN 1: TOTALES CONSOLIDADOS PARA ALMACÉN
             doc.setFont('helvetica', 'bold');
