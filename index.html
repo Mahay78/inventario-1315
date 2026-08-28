@@ -4596,34 +4596,422 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
         async function handleExportOrderPDF() {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            pdfHeader(doc);
-            const items = appData.inventory.filter(it => it.order > 0);
-            if (items.length) {
-                doc.text('Material a Pedir (Total: ' + items.reduce((a, i) => a + i.order, 0) + ' unidades)', 14, 30);
-                doc.autoTable({
-                    startY: 35, head: [['Material', 'Cantidad a Pedir']],
-                    body: items.map(it => [it.material, it.order]),
-                    theme: 'grid', styles: { fontSize: 9 }
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 14;
+            const primaryColor = [16, 185, 129]; // #10b981
+            const secondaryColor = [21, 101, 192];
+            const darkTextColor = [30, 41, 59];
+
+            const rawItems = appData.inventory.filter(it => it.order > 0);
+
+            if (!rawItems.length) {
+                toast('No hay material marcado para pedir.', 'warn');
+                return;
+            }
+
+            // Consolidar materiales por nombre (sumar cantidades y desglosar categorías/ubicaciones)
+            const consolidatedMap = new Map();
+            rawItems.forEach(it => {
+                const matName = (it.material || '').trim();
+                const key = matName.toLowerCase();
+                const cat = (it.category || 'General').trim();
+                const cant = Number(it.order) || 0;
+
+                if (!consolidatedMap.has(key)) {
+                    consolidatedMap.set(key, {
+                        material: matName,
+                        totalCantidad: 0,
+                        destinos: []
+                    });
+                }
+                const entry = consolidatedMap.get(key);
+                entry.totalCantidad += cant;
+
+                const exDest = entry.destinos.find(d => d.ubicacion.toLowerCase() === cat.toLowerCase());
+                if (exDest) {
+                    exDest.cantidad += cant;
+                } else {
+                    entry.destinos.push({ ubicacion: cat, cantidad: cant });
+                }
+            });
+
+            const consolidated = Array.from(consolidatedMap.values());
+
+            // 1. Encabezado
+            doc.setFillColor(...primaryColor);
+            doc.rect(margin, margin, pageWidth - (margin * 2), 22, 'F');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.setTextColor(255, 255, 255);
+            doc.text('SOLICITUD Y REPOSICIÓN DE MATERIAL SANITARIO', margin + 6, margin + 9);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(255, 255, 255);
+            doc.text('Control Consolidado: Ambulancia & Reposición (Unidad ' + (appData.metadata.unidad || '1315') + ')', margin + 6, margin + 16);
+
+            // 2. Metadatos
+            let currentY = margin + 27;
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 20, 2, 2, 'FD');
+
+            doc.setFontSize(8.5);
+            doc.setTextColor(...darkTextColor);
+
+            const col1X = margin + 4;
+            const col2X = margin + (pageWidth - margin * 2) / 2 + 4;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Fecha:', col1X, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), col1X + 15, currentY + 6);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Unidad / Indicativo:', col1X, currentY + 14);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.unidad || '1315', col1X + 32, currentY + 14);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Responsable:', col2X, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.nombre || 'No especificado', col2X + 24, currentY + 6);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Total Artículos:', col2X, currentY + 14);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${consolidated.length} insumos (${rawItems.reduce((a, i) => a + i.order, 0)} uds)`, col2X + 25, currentY + 14);
+
+            currentY += 26;
+
+            // 3. SECCIÓN 1: TOTALES CONSOLIDADOS (PARA FARMACIA / ALMACÉN)
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.setTextColor(...primaryColor);
+            doc.text('1. TOTALES DE MATERIAL A SOLICITAR (CONSOLIDADO)', margin, currentY);
+
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Suma acumulada por insumo para farmacia / compras / almacén', margin, currentY + 4);
+
+            currentY += 6;
+
+            const tableConsolidadoData = consolidated.map((item, idx) => {
+                const destinosTexto = item.destinos
+                    .map(d => `${d.ubicacion} (${d.cantidad})`)
+                    .join(' • ');
+
+                return [
+                    idx + 1,
+                    item.material,
+                    item.totalCantidad,
+                    destinosTexto
+                ];
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['#', 'Insumo / Material Solicitado', 'Cant. Total', 'Destinos Involucrados']],
+                body: tableConsolidadoData,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: primaryColor,
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 8.5,
+                    halign: 'left'
+                },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 70, fontStyle: 'bold' },
+                    2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', textColor: primaryColor },
+                    3: { cellWidth: 'auto', fontSize: 7.5, textColor: [70, 80, 95] }
+                },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                margin: { left: margin, right: margin }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 8;
+
+            // 4. SECCIÓN 2: DESGLOSE POR UBICACIÓN
+            if (currentY > pageHeight - 75) {
+                doc.addPage();
+                currentY = margin + 5;
+            }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.setTextColor(...secondaryColor);
+            doc.text('2. DESGLOSE DETALLADO DE REPOSICIÓN POR UBICACIÓN', margin, currentY);
+
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Guía para ubicar y reponer en cada botiquín, cajón o armario (Checklist [ ✓ ])', margin, currentY + 4);
+
+            currentY += 6;
+
+            const tableDesgloseData = [];
+            let itemCounter = 1;
+
+            consolidated.forEach(item => {
+                item.destinos.forEach((dest, dIdx) => {
+                    tableDesgloseData.push([
+                        dIdx === 0 ? itemCounter++ : '',
+                        dIdx === 0 ? item.material : `  ↳ (continuación)`,
+                        dest.ubicacion,
+                        dest.cantidad,
+                        '[   ]'
+                    ]);
                 });
-            } else doc.text('No hay material para pedir.', 14, 30);
-            await exportAndSharePDF(doc, `Pedido_${appData.metadata.unidad || 'Unidad'}.pdf`, 'Pedido', `Pedido de unidad ${appData.metadata.unidad}`);
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['#', 'Material', 'Ubicación / Destino Específico', 'Cant.', 'Check']],
+                body: tableDesgloseData,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: secondaryColor,
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 8.5,
+                    halign: 'left'
+                },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 65 },
+                    2: { cellWidth: 'auto', fontStyle: 'bold' },
+                    3: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
+                    4: { cellWidth: 18, halign: 'center', fontStyle: 'bold', textColor: [120, 120, 120] }
+                },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                alternateRowStyles: { fillColor: [244, 247, 250] },
+                margin: { left: margin, right: margin }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 8;
+
+            // 5. CUADRO DE OBSERVACIONES
+            if (currentY > pageHeight - 40) {
+                doc.addPage();
+                currentY = margin + 8;
+            }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9.5);
+            doc.setTextColor(...darkTextColor);
+            doc.text('OBSERVACIONES / NOTAS:', margin, currentY);
+
+            currentY += 3.5;
+
+            const obsBoxHeight = 24;
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(250, 252, 255);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), obsBoxHeight, 2, 2, 'FD');
+
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineDashPattern([2, 2], 0);
+            doc.line(margin + 4, currentY + 8, pageWidth - margin - 4, currentY + 8);
+            doc.line(margin + 4, currentY + 15, pageWidth - margin - 4, currentY + 15);
+            doc.line(margin + 4, currentY + 21, pageWidth - margin - 4, currentY + 21);
+            doc.setLineDashPattern([], 0);
+
+            // Numeración de páginas
+            const totalPages = doc.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(140, 150, 160);
+                doc.text(
+                    `Página ${i} de ${totalPages} • ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}`,
+                    pageWidth / 2,
+                    pageHeight - 6,
+                    { align: 'center' }
+                );
+            }
+
+            const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
+            await exportAndSharePDF(doc, `Pedido_Consolidado_${un}.pdf`, 'Pedido Consolidado', `Pedido de material para unidad ${appData.metadata.unidad}`);
+            toast('✅ PDF de Pedido generado con éxito.', 'success');
         }
 
         async function handleExportMonthlyOrderPDF() {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            pdfHeader(doc);
-            if (appData.monthlyOrders.length) {
-                const total = appData.monthlyOrders.reduce((a, r) => a + monthlyUnits(r), 0);
-                doc.text('Pedido Mensual (Total: ' + total + ' unidades)', 14, 30);
-                doc.autoTable({
-                    startY: 35, head: [['Material', 'Cantidad', 'Ubicación']],
-                    body: appData.monthlyOrders.map(r => [r.material, r.quantity || '', r.location || '']),
-                    theme: 'grid', styles: { fontSize: 9 }
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 14;
+            const primaryColor = [16, 185, 129];
+            const secondaryColor = [21, 101, 192];
+            const darkTextColor = [30, 41, 59];
+
+            if (!appData.monthlyOrders.length) {
+                toast('El pedido mensual está vacío.', 'warn');
+                return;
+            }
+
+            const consolidatedMap = new Map();
+            appData.monthlyOrders.forEach(r => {
+                const matName = (r.material || '').trim();
+                const key = matName.toLowerCase();
+                const loc = (r.location || 'General').trim();
+                const cant = Number(monthlyUnits(r)) || 0;
+
+                if (!consolidatedMap.has(key)) {
+                    consolidatedMap.set(key, { material: matName, totalCantidad: 0, destinos: [] });
+                }
+                const entry = consolidatedMap.get(key);
+                entry.totalCantidad += cant;
+
+                const exDest = entry.destinos.find(d => d.ubicacion.toLowerCase() === loc.toLowerCase());
+                if (exDest) {
+                    exDest.cantidad += cant;
+                } else {
+                    entry.destinos.push({ ubicacion: loc, cantidad: cant });
+                }
+            });
+
+            const consolidated = Array.from(consolidatedMap.values());
+
+            // Encabezado
+            doc.setFillColor(...primaryColor);
+            doc.rect(margin, margin, pageWidth - (margin * 2), 22, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.setTextColor(255, 255, 255);
+            doc.text('PEDIDO MENSUAL DE MATERIAL SANITARIO', margin + 6, margin + 9);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text('Unidad: ' + (appData.metadata.unidad || '1315') + ' • Reposición Mensual', margin + 6, margin + 16);
+
+            // Metadatos
+            let currentY = margin + 27;
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 16, 2, 2, 'FD');
+            doc.setFontSize(8.5);
+            doc.setTextColor(...darkTextColor);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Fecha:', margin + 4, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), margin + 18, currentY + 6);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Responsable:', margin + 80, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.nombre || 'No especificado', margin + 104, currentY + 6);
+
+            currentY += 22;
+
+            // Tabla 1: Consolidado
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.setTextColor(...primaryColor);
+            doc.text('1. TOTALES PEDIDO MENSUAL (CONSOLIDADO)', margin, currentY);
+            currentY += 5;
+
+            const tableData = consolidated.map((item, idx) => [
+                idx + 1,
+                item.material,
+                item.totalCantidad,
+                item.destinos.map(d => `${d.ubicacion} (${d.cantidad})`).join(' • ')
+            ]);
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['#', 'Insumo / Material Solicitado', 'Cant. Total', 'Destinos Involucrados']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 70, fontStyle: 'bold' },
+                    2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', textColor: primaryColor },
+                    3: { cellWidth: 'auto', fontSize: 7.5 }
+                },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                margin: { left: margin, right: margin }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 8;
+
+            // Tabla 2: Desglose
+            if (currentY > pageHeight - 75) { doc.addPage(); currentY = margin + 5; }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.setTextColor(...secondaryColor);
+            doc.text('2. DESGLOSE DETALLADO POR UBICACIÓN', margin, currentY);
+            currentY += 5;
+
+            const tableDesglose = [];
+            let c = 1;
+            consolidated.forEach(item => {
+                item.destinos.forEach((dest, dIdx) => {
+                    tableDesglose.push([
+                        dIdx === 0 ? c++ : '',
+                        dIdx === 0 ? item.material : '  ↳ (continuación)',
+                        dest.ubicacion,
+                        dest.cantidad,
+                        '[   ]'
+                    ]);
                 });
-            } else doc.text('El pedido mensual está vacío.', 14, 30);
-            await exportAndSharePDF(doc, `PedidoMensual_${appData.metadata.unidad || 'Unidad'}.pdf`, 'Pedido Mensual', `Pedido Mensual de unidad ${appData.metadata.unidad}`);
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                head: [['#', 'Material', 'Ubicación', 'Cant.', 'Check']],
+                body: tableDesglose,
+                theme: 'grid',
+                headStyles: { fillColor: secondaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 65 },
+                    2: { cellWidth: 'auto', fontStyle: 'bold' },
+                    3: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
+                    4: { cellWidth: 18, halign: 'center', fontStyle: 'bold', textColor: [120, 120, 120] }
+                },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                alternateRowStyles: { fillColor: [244, 247, 250] },
+                margin: { left: margin, right: margin }
+            });
+
+            currentY = doc.lastAutoTable.finalY + 8;
+
+            // Cuadro Observaciones
+            if (currentY > pageHeight - 40) { doc.addPage(); currentY = margin + 8; }
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9.5);
+            doc.setTextColor(...darkTextColor);
+            doc.text('OBSERVACIONES / NOTAS:', margin, currentY);
+            currentY += 3.5;
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(250, 252, 255);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 24, 2, 2, 'FD');
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineDashPattern([2, 2], 0);
+            doc.line(margin + 4, currentY + 8, pageWidth - margin - 4, currentY + 8);
+            doc.line(margin + 4, currentY + 15, pageWidth - margin - 4, currentY + 15);
+            doc.line(margin + 4, currentY + 21, pageWidth - margin - 4, currentY + 21);
+            doc.setLineDashPattern([], 0);
+
+            const totalPages = doc.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(140, 150, 160);
+                doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+            }
+
+            const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
+            await exportAndSharePDF(doc, `Pedido_Mensual_${un}.pdf`, 'Pedido Mensual', `Pedido Mensual de unidad ${appData.metadata.unidad}`);
+            toast('✅ PDF de Pedido Mensual generado con éxito.', 'success');
         }
 
         // ---- Toast ----
