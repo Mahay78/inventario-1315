@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <title>Inventario SVB · Pro (Unidad 1315)</title>
+    <title>Control de Armario 1315 · Pro</title>
     <style>
         /* ============================================================
            TOKENS · Paleta verde pastel + blanco (emergencias/ambulancia)
@@ -647,62 +647,6 @@
         /* Estado vacío */
         .empty-state { text-align: center; color: var(--text-faint); padding: 28px 16px; font-weight: 600; }
 
-        /* ============================================================
-           CHECKLIST DE REPOSICIÓN MÓVIL (MODO REPOSICIÓN)
-           ============================================================ */
-        .reposition-card {
-            background: var(--surface); border: 1px solid var(--border-soft);
-            border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;
-            box-shadow: var(--shadow-soft);
-        }
-        .reposition-header {
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;
-        }
-        .reposition-progress {
-            background: var(--surface-3); border-radius: 999px; height: 10px;
-            overflow: hidden; margin: 8px 0 12px;
-        }
-        .reposition-progress__bar {
-            height: 100%; background: linear-gradient(90deg, var(--ok), #2dd4bf);
-            transition: width .3s ease; width: 0%;
-        }
-        .reposition-group {
-            background: var(--surface-2); border: 1px solid var(--border-soft);
-            border-radius: 12px; padding: 10px 12px; margin-bottom: 10px;
-        }
-        .reposition-group__title {
-            font-weight: 800; font-size: 13.5px; color: var(--text);
-            margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;
-        }
-        .reposition-item {
-            display: flex; align-items: center; gap: 10px;
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 10px; padding: 9px 12px; margin-bottom: 6px;
-            cursor: pointer; user-select: none; transition: all .15s ease;
-        }
-        .reposition-item:active { transform: scale(.98); }
-        .reposition-item.is-checked {
-            background: var(--ok-soft); border-color: rgba(22, 163, 74, .35);
-        }
-        .reposition-item.is-checked .reposition-item__name {
-            text-decoration: line-through; color: var(--text-faint);
-        }
-        .reposition-item__box {
-            width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--border);
-            display: grid; place-items: center; font-size: 14px; color: transparent;
-            transition: all .15s ease; flex: 0 0 24px;
-        }
-        .reposition-item.is-checked .reposition-item__box {
-            background: var(--ok); border-color: var(--ok); color: #ffffff;
-        }
-        .reposition-item__name {
-            font-weight: 700; font-size: 14px; flex: 1; line-height: 1.3;
-        }
-        .reposition-item__qty {
-            font-weight: 800; font-size: 13px; color: var(--primary);
-            background: var(--primary-dim); padding: 2px 8px; border-radius: 6px;
-        }
-
         /* Animaciones de alta/baja */
         @keyframes pop { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
         .item.just-added { animation: pop .6s ease; }
@@ -731,7 +675,7 @@
         <div class="topbar__brand">
             <div class="topbar__logo"><svg viewBox="0 0 24 24" width="24" height="24" fill="white" aria-hidden="true"><rect x="10" y="4" width="4" height="16" rx="1.2"/><rect x="4" y="10" width="16" height="4" rx="1.2"/></svg></div>
             <div class="topbar__titles">
-                <div class="topbar__title">Inventario SVB · Pro</div>
+                <div class="topbar__title">Control Armario 1315</div>
                 <div class="topbar__sub"><span class="status-dot"></span> Unidad 1315 · <span id="clock">16:42</span></div>
             </div>
         </div>
@@ -746,8 +690,8 @@
         <!-- Barra de Pestañas / Navegación Principal -->
         <nav class="tabbar" id="main-tabbar">
             <button type="button" class="tabbar__btn is-active" data-tab="tab-inventario" onclick="switchTab('tab-inventario')">
-                <span>📋</span>
-                <span>Inventario</span>
+                <span>🗄️</span>
+                <span>Armario</span>
             </button>
             <button type="button" class="tabbar__btn" data-tab="tab-pedidos" onclick="switchTab('tab-pedidos')">
                 <span>📦</span>
@@ -761,7 +705,7 @@
         </nav>
 
         <!-- ============================================================
-             PESTAÑA 1: INVENTARIO DIARIO & CHEQUEO DE GUARDIA
+             PESTAÑA 1: CONTROL Y CHEQUEO DE ARMARIO
              ============================================================ -->
         <div id="tab-inventario" class="tab-content is-active">
 
@@ -773,7 +717,7 @@
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <button type="button" class="hero__btn" onclick="switchTab('tab-pedidos')">📦 Pedidos (<span id="btn-pedidos-count">0</span> uds)</button>
-                    <button type="button" class="btn btn--primary" style="height:44px;padding:0 12px;font-size:13px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg, var(--accent), var(--primary));color:#04121a;" onclick="handleDownloadCombinedOrderPDFDirect()" title="Descargar ambos pedidos (Ambulancia + Mensual) en un único PDF">📑 PDF Conjunto (Ambos en 1)</button>
+                    <button type="button" class="btn btn--primary" style="height:44px;padding:0 12px;font-size:13px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg, var(--accent), var(--primary));color:#04121a;" onclick="handleDownloadCombinedOrderPDFDirect()" title="Descargar ambos pedidos (Armario + Mensual) en un único PDF">📑 PDF Conjunto</button>
                 </div>
             </section>
 
@@ -2821,7 +2765,7 @@
         <!-- Vista tabla (desktop) -->
         <section class="table-view">
             <div class="table-view__head">
-                <h2>Inventario principal</h2>
+                <h2>Armario principal</h2>
                 <span class="hero__date" id="tbl-count">71 materiales · a pedir 69 uds</span>
             </div>
             <table class="inv">
@@ -4057,52 +4001,18 @@
     </div><!-- Fin #tab-inventario -->
 
     <!-- ============================================================
-         PESTAÑA 2: CENTRO DE PEDIDOS & REPOSICIÓN
+         PESTAÑA 2: CENTRO DE PEDIDOS
          ============================================================ -->
     <div id="tab-pedidos" class="tab-content">
         
-        <!-- ============================================================
-             CHECKLIST INTERACTIVO: GUÍA DE REPOSICIÓN EN ARMARIO
-             ============================================================ -->
-        <section class="reposition-card" id="reposition-section">
-            <div class="reposition-header">
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="font-size:22px;">🗄️</span>
-                    <div>
-                        <div style="font-weight:800;font-size:15px;color:var(--text);">Modo Reposición en Armario</div>
-                        <div style="font-size:12px;color:var(--text-soft);" id="reposition-subtitle">Checklist interactivo para colocar material en cada compartimento</div>
-                    </div>
-                </div>
-                <button type="button" class="btn btn--ghost" style="height:32px;padding:0 10px;font-size:12px;font-weight:700;" onclick="resetRepositionChecklist()">🔄 Reiniciar</button>
-            </div>
-
-            <div class="reposition-progress">
-                <div class="reposition-progress__bar" id="reposition-progress-bar"></div>
-            </div>
-            <div style="font-size:12px;font-weight:700;color:var(--text-faint);display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <span id="reposition-status-text">0 de 0 insumos colocados (0%)</span>
-                <span style="color:var(--ok);font-weight:800;display:none;" id="reposition-complete-badge">🎉 ¡Todo Repuesto!</span>
-            </div>
-
-            <!-- Filtros de reposición -->
-            <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;">
-                <button type="button" class="chip is-active" id="rep-filter-all" onclick="setRepFilter('all')">Todos los Destinos</button>
-                <button type="button" class="chip" id="rep-filter-amb" onclick="setRepFilter('amb')">🗄️ Solo Armario</button>
-                <button type="button" class="chip" id="rep-filter-mo" onclick="setRepFilter('mo')">📅 Solo Mensual</button>
-            </div>
-
-            <!-- Contenedor del checklist de reposición -->
-            <div id="reposition-list"></div>
-        </section>
-
-        <!-- Bloque 1: Pedido Armario (Exclusivo Inventario) -->
+        <!-- Bloque 1: Pedido Armario (Exclusivo Faltantes) -->
         <section class="panel" style="margin-bottom:18px;">
             <div class="panel__title">
                 <span class="spark">🗄️</span> 1. Pedido de Armario
                 <span class="badge" style="margin-left:auto;background:var(--primary-dim);color:var(--primary);font-weight:800;padding:4px 8px;border-radius:8px;" id="order-tab-badge">0 uds</span>
             </div>
             <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
-                Materiales faltantes calculados <strong>exclusivamente</strong> del inventario del armario.
+                Materiales faltantes calculados <strong>exclusivamente</strong> del armario.
             </p>
             <div id="order-ambulance-preview" style="margin-bottom:14px;"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -4199,14 +4109,14 @@
         
         <!-- Metadatos de la Guardia / Unidad -->
         <section class="panel" style="margin-bottom:18px;">
-            <div class="panel__title"><span class="spark">🚑</span> Datos de la Unidad & Guardia</div>
+            <div class="panel__title"><span class="spark">🗄️</span> Datos del Armario & Guardia</div>
             <div class="meta" style="box-shadow:none;border:none;padding:0;background:transparent;">
                 <div class="meta__field">
                     <label class="meta__label">📅 Fecha de Revisión</label>
                     <input type="date" id="meta-fecha">
                 </div>
                 <div class="meta__field">
-                    <label class="meta__label">🚑 Indicativo Unidad</label>
+                    <label class="meta__label">🗄️ Indicativo / Armario</label>
                     <input type="text" id="meta-unidad" placeholder="Ej. 1315">
                 </div>
                 <div class="meta__field">
@@ -4230,7 +4140,7 @@
                 <button class="act" onclick="backupData()"><span class="ic2">💾</span>Backup JSON</button>
                 <button class="act" onclick="document.getElementById('restore-input').click()"><span class="ic2">📂</span>Restaurar</button>
                 <button class="act" onclick="exportToCSV()"><span class="ic2">📊</span>Excel / CSV</button>
-                <button class="act" onclick="handleExportInventoryPDF()"><span class="ic2">📄</span>PDF Inventario</button>
+                <button class="act" onclick="handleExportInventoryPDF()"><span class="ic2">📄</span>PDF Armario Completo</button>
                 <button class="act" onclick="downloadApp()"><span class="ic2">📲</span>Descargar App</button>
                 <button class="act" onclick="openHelpModal()"><span class="ic2">❓</span>Guía de Uso</button>
             </div>
@@ -4255,7 +4165,7 @@
 
     <!-- ==================== DOCKBAR (móvil) ==================== -->
     <nav class="dockbar">
-        <button class="dockbar__btn dockbar__btn--primary" data-tab="tab-inventario" onclick="switchTab('tab-inventario')"><span class="ic">📋</span>Inventario</button>
+        <button class="dockbar__btn dockbar__btn--primary" data-tab="tab-inventario" onclick="switchTab('tab-inventario')"><span class="ic">🗄️</span>Armario</button>
         <button class="dockbar__btn" onclick="showAddModal()"><span class="ic">➕</span>Añadir</button>
         <button class="dockbar__btn" data-tab="tab-pedidos" onclick="switchTab('tab-pedidos')"><span class="ic">📦</span>Pedidos</button>
         <button class="dockbar__btn" data-tab="tab-gestion" onclick="switchTab('tab-gestion')"><span class="ic">⚙️</span>Ajustes</button>
@@ -4333,29 +4243,28 @@
                     </div>
                 </div>
 
-                <!-- Sección 2: Control Diario de Inventario -->
+                <!-- Sección 2: Control de Armario -->
                 <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px; margin-bottom:12px;">
                     <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
-                        <span>📋</span> 2. Control Diario de Inventario
+                        <span>🗄️</span> 2. Control de Armario
                     </div>
                     <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
                         <li><strong>Botones Stepper (− y +):</strong> Ajusta el stock actual con un solo toque desde tu móvil.</li>
                         <li><strong>Cálculo Automático de "Pido":</strong> La cantidad a pedir se calcula al instante: <code>Tener (Stock Ideal) − Tengo (Stock Actual)</code>.</li>
                         <li><strong>✏️ Editar / 🗑️ Eliminar:</strong> Pulsa el lápiz para editar el stock ideal, categoría o caducidad de cualquier material.</li>
-                        <li><strong>➕ Añadir Material:</strong> Usa el botón para incluir nuevos insumos en cualquier compartimento.</li>
+                        <li><strong>➕ Añadir Material:</strong> Usa el botón para incluir nuevos insumos en el armario.</li>
                     </ul>
                 </div>
 
-                <!-- Sección 3: Pedidos Inteligentes y PDF -->
+                <!-- Sección 3: Solicitud Oficial de Pedidos en PDF -->
                 <div style="background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:14px; margin-bottom:12px;">
                     <div style="font-weight:800; font-size:14px; margin-bottom:8px; color:var(--text); display:flex; align-items:center; gap:6px;">
-                        <span>📦</span> 3. Generación de Pedidos y PDF Consolidado
+                        <span>📦</span> 3. Generación de Solicitudes Oficiales en PDF
                     </div>
                     <ul style="padding-left:18px; margin:0; font-size:13px; color:var(--text-soft); display:flex; flex-direction:column; gap:6px;">
-                        <li><strong>Consolidación Automática:</strong> Si pides gasas para el Botiquín Circulatorio (50) y para el Cajón de Curas (10), el sistema calcula el total de 60 unidades para farmacia/almacén.</li>
-                        <li><strong>Sección 1 del PDF (Almacén / Compras):</strong> Tabla de totales consolidados por insumo para agilizar la preparación del pedido.</li>
-                        <li><strong>Sección 2 del PDF (Reposición):</strong> Desglose detallado por ubicación con casillas de verificación <code>[ ]</code> para marcar físicamente al reponer en la ambulancia.</li>
-                        <li><strong>Sección 3 del PDF (Notas):</strong> Cuadro con líneas para escribir observaciones a mano.</li>
+                        <li><strong>Solicitudes Limpias de 1 Página:</strong> Genera documentos oficiales concisos y claros listos para enviar a Farmacia o Almacén.</li>
+                        <li><strong>Consolidación Automática:</strong> Agrupa y suma las cantidades de todos los materiales para facilitar la preparación en almacén.</li>
+                        <li><strong>3 Opciones de PDF:</strong> Pedido de Armario, Pedido Mensual o Pedido Conjunto (ambos combinados).</li>
                         <li><strong>Compartir por WhatsApp / Email:</strong> En teléfonos móviles, puedes enviar el PDF generado directamente a tus compañeros o supervisores con el menú nativo.</li>
                     </ul>
                 </div>
@@ -4899,7 +4808,6 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             });
             if (tabId === 'tab-pedidos') {
                 renderAmbulanceOrderPreview();
-                renderRepositionChecklist();
             }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -4930,7 +4838,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             previewEl.innerHTML = `
                 <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:12px;">
                     <div style="font-size:12px; font-weight:800; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px; display:flex; justify-content:space-between;">
-                        <span>📊 Resumen Consolidado (Faltantes de Dotación)</span>
+                        <span>📊 Resumen Consolidado (Faltantes de Armario)</span>
                         <span style="color:var(--primary);">${consolidated.length} distintos</span>
                     </div>
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
@@ -4974,7 +4882,6 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             renderMonthly();
             buildDatalists();
             renderAmbulanceOrderPreview();
-            renderRepositionChecklist();
 
             // Actualizar badges de pedido
             const needItems = appData.inventory.filter(i => i.order > 0);
@@ -5153,7 +5060,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = `inventario_backup_${appData.metadata.unidad || 'Unidad'}_${new Date().toISOString().split('T')[0]}.json`;
+            a.href = url; a.download = `armario_backup_${appData.metadata.unidad || 'Unidad'}_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a); a.click(); a.remove();
             toast('Backup (JSON) descargado.', 'success');
         }
@@ -5187,14 +5094,14 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             });
             const a = document.createElement('a');
             a.href = encodeURI(csv);
-            a.download = `inventario_${appData.metadata.unidad}_${new Date().toISOString().split('T')[0]}.csv`;
+            a.download = `armario_${appData.metadata.unidad}_${new Date().toISOString().split('T')[0]}.csv`;
             document.body.appendChild(a); a.click(); a.remove();
             toast('Archivo CSV exportado.', 'success');
         }
 
         function downloadApp() {
             let csv = `VERSION,${Date.now()}\nFECHA,${appData.metadata.fecha || ''},UNIDAD,${appData.metadata.unidad || ''},NOMBRE,,${csvClean(String(appData.metadata.nombre || '') + ' ')} ,,\n`;
-            csv += "STOCK DE MATERIAL SOPORTE VITAL BASICO,,,,,,,,\nMATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD\n";
+            csv += "STOCK DE MATERIAL ARMARIO SANITARIO,,,,,,,,\nMATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD\n";
             [...new Set(appData.inventory.map(i => i.category))].forEach(cat => {
                 csv += `${csvClean(cat)},,,,,,,,\n`;
                 appData.inventory.filter(i => i.category === cat).forEach(it => {
@@ -5210,7 +5117,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const blob = new Blob([html], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = `inventario_app_${appData.metadata.unidad || 'portatil'}.html`;
+            a.href = url; a.download = `armario_app_${appData.metadata.unidad || 'portatil'}.html`;
             document.body.appendChild(a); a.click(); a.remove();
             toast('App descargada con tus datos.', 'success');
         }
@@ -5245,7 +5152,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 body: appData.inventory.map(it => [it.material, it.idealStock, it.currentStock, it.order, formatDate(parseDate(it.expiry)), it.category]),
                 theme: 'striped', styles: { fontSize: 8 }
             });
-            await exportAndSharePDF(doc, `Inventario_${appData.metadata.unidad || 'Unidad'}.pdf`, 'Inventario', `Inventario de unidad ${appData.metadata.unidad}`);
+            await exportAndSharePDF(doc, `Armario_Completo_${appData.metadata.unidad || 'Unidad'}.pdf`, 'Armario', `Armario de unidad ${appData.metadata.unidad}`);
         }
 
         async function handleExportOrderPDF(forceDirectDownload = false) {
@@ -5580,11 +5487,11 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 const key = name.toLowerCase();
                 const cant = Number(it.order) || 0;
                 if (!map.has(key)) {
-                    map.set(key, { material: name, total: 0, cantAmbulancia: 0, cantMensual: 0 });
+                    map.set(key, { material: name, total: 0, cantArmario: 0, cantMensual: 0 });
                 }
                 const entry = map.get(key);
                 entry.total += cant;
-                entry.cantAmbulancia += cant;
+                entry.cantArmario += cant;
             });
 
             // 2. Insumos del pedido mensual
@@ -5593,7 +5500,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 const key = name.toLowerCase();
                 const cant = Number(monthlyUnits(r)) || 0;
                 if (!map.has(key)) {
-                    map.set(key, { material: name, total: 0, cantAmbulancia: 0, cantMensual: 0 });
+                    map.set(key, { material: name, total: 0, cantArmario: 0, cantMensual: 0 });
                 }
                 const entry = map.get(key);
                 entry.total += cant;
@@ -5653,7 +5560,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             const tableTotales = consolidated.map((c, i) => {
                 const origenTxt = [];
-                if (c.cantAmbulancia > 0) origenTxt.push(`Armario: ${c.cantAmbulancia}`);
+                if (c.cantArmario > 0) origenTxt.push(`Armario: ${c.cantArmario}`);
                 if (c.cantMensual > 0) origenTxt.push(`Mensual: ${c.cantMensual}`);
                 return [
                     i + 1,
@@ -5708,7 +5615,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             }
 
             const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
-            const fileName = `Solicitud_Material_Conjunto_${un}.pdf`;
+            const fileName = `Solicitud_Material_Conjunto_Armario_y_Mensual_${un}.pdf`;
 
             if (forceDirectDownload) {
                 doc.save(fileName);
@@ -5721,129 +5628,6 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
         async function handleDownloadCombinedOrderPDFDirect() {
             await handleExportCombinedOrderPDF(true);
-        }
-
-        // ============================================================
-        //  MODO REPOSICIÓN · CHECKLIST INTERACTIVO EN EL MÓVIL
-        // ============================================================
-        let curRepFilter = 'all';
-        let repCheckedMap = {};
-
-        function loadRepChecked() {
-            try {
-                const stored = localStorage.getItem(`rep_checked_${appData.metadata.unidad || '1315'}`);
-                if (stored) repCheckedMap = JSON.parse(stored);
-            } catch(e) { repCheckedMap = {}; }
-        }
-
-        function saveRepChecked() {
-            try {
-                localStorage.setItem(`rep_checked_${appData.metadata.unidad || '1315'}`, JSON.stringify(repCheckedMap));
-            } catch(e) {}
-        }
-
-        function toggleRepItem(key) {
-            repCheckedMap[key] = !repCheckedMap[key];
-            saveRepChecked();
-            renderRepositionChecklist();
-        }
-
-        function resetRepositionChecklist() {
-            if (confirm('¿Deseas reiniciar todas las casillas del checklist de reposición?')) {
-                repCheckedMap = {};
-                saveRepChecked();
-                renderRepositionChecklist();
-                toast('Checklist reiniciado.', 'info');
-            }
-        }
-
-        function setRepFilter(f) {
-            curRepFilter = f;
-            document.querySelectorAll('#reposition-section .chip').forEach(ch => ch.classList.remove('is-active'));
-            const activeChip = document.getElementById('rep-filter-' + f);
-            if (activeChip) activeChip.classList.add('is-active');
-            renderRepositionChecklist();
-        }
-
-        function renderRepositionChecklist() {
-            const listEl = document.getElementById('reposition-list');
-            const barEl = document.getElementById('reposition-progress-bar');
-            const statusEl = document.getElementById('reposition-status-text');
-            const completeBadge = document.getElementById('reposition-complete-badge');
-            if (!listEl) return;
-
-            loadRepChecked();
-
-            const ambulanceItems = appData.inventory.filter(it => it.order > 0).map(it => ({
-                origen: 'Armario',
-                material: it.material,
-                ubicacion: it.category || 'Armario (General)',
-                cantidad: it.order
-            }));
-
-            const monthlyItems = (appData.monthlyOrders || []).map(r => ({
-                origen: 'Mensual',
-                material: r.material,
-                ubicacion: r.location || 'Armario de reposición / Almacén',
-                cantidad: monthlyUnits(r)
-            }));
-
-            let allItems = [];
-            if (curRepFilter === 'all') allItems = [...ambulanceItems, ...monthlyItems];
-            else if (curRepFilter === 'amb') allItems = [...ambulanceItems];
-            else if (curRepFilter === 'mo') allItems = [...monthlyItems];
-
-            if (!allItems.length) {
-                listEl.innerHTML = '<div class="empty-state" style="padding:16px;background:var(--surface-2);border-radius:12px;color:var(--text-faint);">No hay materiales pendientes de reponer para este filtro.</div>';
-                if (barEl) barEl.style.width = '0%';
-                if (statusEl) statusEl.textContent = '0 de 0 insumos colocados (0%)';
-                if (completeBadge) completeBadge.style.display = 'none';
-                return;
-            }
-
-            // Agrupar por compartimento / ubicación
-            const groupsMap = new Map();
-            allItems.forEach(item => {
-                const u = item.ubicacion || 'General';
-                if (!groupsMap.has(u)) groupsMap.set(u, []);
-                groupsMap.get(u).push(item);
-            });
-
-            let totalItems = allItems.length;
-            let checkedCount = 0;
-
-            let html = '';
-            groupsMap.forEach((items, loc) => {
-                const isLocArmario = items.some(i => i.origen === 'Armario');
-                const icon = isLocArmario ? '🗄️' : '📅';
-                html += `
-                    <div class="reposition-group">
-                        <div class="reposition-group__title">
-                            <span>${icon} <strong>${escapeHtml(loc)}</strong></span>
-                            <span style="font-size:11.5px;color:var(--text-faint);">${items.length} insumos</span>
-                        </div>
-                `;
-                items.forEach(item => {
-                    const key = `${item.origen}_${item.material}_${item.ubicacion}`.toLowerCase();
-                    const isChecked = !!repCheckedMap[key];
-                    if (isChecked) checkedCount++;
-                    html += `
-                        <div class="reposition-item ${isChecked ? 'is-checked' : ''}" onclick="toggleRepItem('${escapeHtml(key)}')">
-                            <div class="reposition-item__box">${isChecked ? '✓' : ''}</div>
-                            <div class="reposition-item__name">${escapeHtml(item.material)}</div>
-                            <div class="reposition-item__qty">${item.cantidad} uds</div>
-                        </div>
-                    `;
-                });
-                html += `</div>`;
-            });
-
-            listEl.innerHTML = html;
-
-            const percent = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
-            if (barEl) barEl.style.width = `${percent}%`;
-            if (statusEl) statusEl.textContent = `${checkedCount} de ${totalItems} insumos colocados (${percent}%)`;
-            if (completeBadge) completeBadge.style.display = (totalItems > 0 && checkedCount === totalItems) ? 'inline-block' : 'none';
         }
 
         // ---- Toast ----
@@ -5930,10 +5714,6 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.handleExportCombinedOrderPDF = handleExportCombinedOrderPDF;
         window.handleDownloadCombinedOrderPDFDirect = handleDownloadCombinedOrderPDFDirect;
         window.switchTab = switchTab;
-        window.toggleRepItem = toggleRepItem;
-        window.resetRepositionChecklist = resetRepositionChecklist;
-        window.setRepFilter = setRepFilter;
-        window.renderRepositionChecklist = renderRepositionChecklist;
 
         loadData();
         setup();
@@ -5957,5 +5737,5 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         }
         window.toggleTheme = toggleTheme;
     </script>
-
-</body></html>
+</body>
+</html>
