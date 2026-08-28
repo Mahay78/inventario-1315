@@ -647,6 +647,62 @@
         /* Estado vacío */
         .empty-state { text-align: center; color: var(--text-faint); padding: 28px 16px; font-weight: 600; }
 
+        /* ============================================================
+           CHECKLIST DE REPOSICIÓN MÓVIL (MODO REPOSICIÓN)
+           ============================================================ */
+        .reposition-card {
+            background: var(--surface); border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;
+            box-shadow: var(--shadow-soft);
+        }
+        .reposition-header {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;
+        }
+        .reposition-progress {
+            background: var(--surface-3); border-radius: 999px; height: 10px;
+            overflow: hidden; margin: 8px 0 12px;
+        }
+        .reposition-progress__bar {
+            height: 100%; background: linear-gradient(90deg, var(--ok), #2dd4bf);
+            transition: width .3s ease; width: 0%;
+        }
+        .reposition-group {
+            background: var(--surface-2); border: 1px solid var(--border-soft);
+            border-radius: 12px; padding: 10px 12px; margin-bottom: 10px;
+        }
+        .reposition-group__title {
+            font-weight: 800; font-size: 13.5px; color: var(--text);
+            margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .reposition-item {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 9px 12px; margin-bottom: 6px;
+            cursor: pointer; user-select: none; transition: all .15s ease;
+        }
+        .reposition-item:active { transform: scale(.98); }
+        .reposition-item.is-checked {
+            background: var(--ok-soft); border-color: rgba(22, 163, 74, .35);
+        }
+        .reposition-item.is-checked .reposition-item__name {
+            text-decoration: line-through; color: var(--text-faint);
+        }
+        .reposition-item__box {
+            width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--border);
+            display: grid; place-items: center; font-size: 14px; color: transparent;
+            transition: all .15s ease; flex: 0 0 24px;
+        }
+        .reposition-item.is-checked .reposition-item__box {
+            background: var(--ok); border-color: var(--ok); color: #ffffff;
+        }
+        .reposition-item__name {
+            font-weight: 700; font-size: 14px; flex: 1; line-height: 1.3;
+        }
+        .reposition-item__qty {
+            font-weight: 800; font-size: 13px; color: var(--primary);
+            background: var(--primary-dim); padding: 2px 8px; border-radius: 6px;
+        }
+
         /* Animaciones de alta/baja */
         @keyframes pop { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
         .item.just-added { animation: pop .6s ease; }
@@ -4005,6 +4061,40 @@
          ============================================================ -->
     <div id="tab-pedidos" class="tab-content">
         
+        <!-- ============================================================
+             CHECKLIST INTERACTIVO: GUÍA DE REPOSICIÓN EN AMBULANCIA
+             ============================================================ -->
+        <section class="reposition-card" id="reposition-section">
+            <div class="reposition-header">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:22px;">🚑</span>
+                    <div>
+                        <div style="font-weight:800;font-size:15px;color:var(--text);">Modo Reposición en Ambulancia</div>
+                        <div style="font-size:12px;color:var(--text-soft);" id="reposition-subtitle">Checklist interactivo para colocar material en cada compartimento</div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn--ghost" style="height:32px;padding:0 10px;font-size:12px;font-weight:700;" onclick="resetRepositionChecklist()">🔄 Reiniciar</button>
+            </div>
+
+            <div class="reposition-progress">
+                <div class="reposition-progress__bar" id="reposition-progress-bar"></div>
+            </div>
+            <div style="font-size:12px;font-weight:700;color:var(--text-faint);display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <span id="reposition-status-text">0 de 0 insumos colocados (0%)</span>
+                <span style="color:var(--ok);font-weight:800;display:none;" id="reposition-complete-badge">🎉 ¡Todo Repuesto!</span>
+            </div>
+
+            <!-- Filtros de reposición -->
+            <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;">
+                <button type="button" class="chip is-active" id="rep-filter-all" onclick="setRepFilter('all')">Todos los Destinos</button>
+                <button type="button" class="chip" id="rep-filter-amb" onclick="setRepFilter('amb')">🚑 Solo Ambulancia</button>
+                <button type="button" class="chip" id="rep-filter-mo" onclick="setRepFilter('mo')">📅 Solo Mensual</button>
+            </div>
+
+            <!-- Contenedor del checklist de reposición -->
+            <div id="reposition-list"></div>
+        </section>
+
         <!-- Bloque 1: Pedido Ambulancia (Exclusivo Inventario Guardia) -->
         <section class="panel" style="margin-bottom:18px;">
             <div class="panel__title">
@@ -4809,6 +4899,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             });
             if (tabId === 'tab-pedidos') {
                 renderAmbulanceOrderPreview();
+                renderRepositionChecklist();
             }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -4838,15 +4929,16 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const consolidated = Array.from(map.values());
             previewEl.innerHTML = `
                 <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:12px;">
-                    <div style="font-size:12px;font-weight:800;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;display:flex;justify-content:space-between;">
-                        <span>📋 Faltantes de Dotación (${consolidated.length} insumos · ${items.reduce((a,i)=>a+i.order,0)} uds)</span>
+                    <div style="font-size:12px; font-weight:800; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px; display:flex; justify-content:space-between;">
+                        <span>📊 Resumen Consolidado (Faltantes de Dotación)</span>
+                        <span style="color:var(--primary);">${consolidated.length} distintos</span>
                     </div>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:8px;">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
                         ${consolidated.map(c => `
                             <div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:8px 10px;font-size:12px;">
                                 <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:4px;">
                                     <span>${escapeHtml(c.material)}</span>
-                                    <span style="color:var(--primary);font-weight:800;background:var(--primary-dim);padding:1px 6px;border-radius:6px;">Total: ${c.total}</span>
+                                    <span style="color:var(--primary);font-weight:800;background:var(--primary-dim);padding:1px 6px;border-radius:6px;">Pedir: ${c.total}</span>
                                 </div>
                                 <div style="font-size:11px;color:var(--text-faint);">
                                     ${c.destinos.map(d => `📍 ${escapeHtml(d.ubicacion)}: <strong>${d.cantidad}</strong>`).join(' • ')}
@@ -4882,6 +4974,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             renderMonthly();
             buildDatalists();
             renderAmbulanceOrderPreview();
+            renderRepositionChecklist();
 
             // Actualizar badges de pedido
             const needItems = appData.inventory.filter(i => i.order > 0);
@@ -5162,7 +5255,6 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 14;
             const primaryColor = [16, 185, 129]; // #10b981
-            const secondaryColor = [21, 101, 192];
             const darkTextColor = [30, 41, 59];
 
             const rawItems = appData.inventory.filter(it => it.order > 0);
@@ -5172,30 +5264,17 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 return;
             }
 
-            // Consolidar materiales por nombre (sumar cantidades y desglosar categorías/ubicaciones)
+            // Consolidar materiales por nombre (sumar cantidades si estuvieran en varios lugares)
             const consolidatedMap = new Map();
             rawItems.forEach(it => {
                 const matName = (it.material || '').trim();
                 const key = matName.toLowerCase();
-                const cat = (it.category || 'General').trim();
                 const cant = Number(it.order) || 0;
 
                 if (!consolidatedMap.has(key)) {
-                    consolidatedMap.set(key, {
-                        material: matName,
-                        totalCantidad: 0,
-                        destinos: []
-                    });
+                    consolidatedMap.set(key, { material: matName, totalCantidad: 0 });
                 }
-                const entry = consolidatedMap.get(key);
-                entry.totalCantidad += cant;
-
-                const exDest = entry.destinos.find(d => d.ubicacion.toLowerCase() === cat.toLowerCase());
-                if (exDest) {
-                    exDest.cantidad += cant;
-                } else {
-                    entry.destinos.push({ ubicacion: cat, cantidad: cant });
-                }
+                consolidatedMap.get(key).totalCantidad += cant;
             });
 
             const consolidated = Array.from(consolidatedMap.values());
@@ -5205,14 +5284,14 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             doc.rect(margin, margin, pageWidth - (margin * 2), 22, 'F');
 
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
+            doc.setFontSize(13);
             doc.setTextColor(255, 255, 255);
-            doc.text('PEDIDO DE REPOSICIÓN · AMBULANCIA (GUARDIA)', margin + 6, margin + 9);
+            doc.text('SOLICITUD DE MATERIAL SANITARIO · AMBULANCIA', margin + 6, margin + 9);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
             doc.setTextColor(255, 255, 255);
-            doc.text('Reposición de Material Diario de Dotación (Unidad ' + (appData.metadata.unidad || '1315') + ')', margin + 6, margin + 16);
+            doc.text('Reposición de Guardia · Unidad ' + (appData.metadata.unidad || '1315') + ' • Solicitud para Almacén / Farmacia', margin + 6, margin + 16);
 
             // 2. Metadatos
             let currentY = margin + 27;
@@ -5243,139 +5322,67 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             currentY += 19;
 
-            // 3. SECCIÓN 1: TOTALES CONSOLIDADOS (PARA FARMACIA / ALMACÉN)
+            // 3. TABLA DE TOTALES DE MATERIAL A SOLICITAR
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10.5);
+            doc.setFontSize(10);
             doc.setTextColor(...primaryColor);
-            doc.text('1. TOTALES DE MATERIAL A SOLICITAR (CONSOLIDADO)', margin, currentY);
+            doc.text('MATERIAL SANITARIO A SOLICITAR:', margin, currentY);
 
-            doc.setFont('helvetica', 'italic');
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            doc.text('Suma acumulada por insumo para farmacia / compras / almacén', margin, currentY + 4);
+            currentY += 4;
 
-            currentY += 6;
-
-            const tableConsolidadoData = consolidated.map((item, idx) => {
-                const destinosTexto = item.destinos
-                    .map(d => `${d.ubicacion} (${d.cantidad})`)
-                    .join(' • ');
-
-                return [
-                    idx + 1,
-                    item.material,
-                    item.totalCantidad,
-                    destinosTexto
-                ];
-            });
+            const tableConsolidadoData = consolidated.map((item, idx) => [
+                idx + 1,
+                item.material,
+                item.totalCantidad
+            ]);
 
             doc.autoTable({
                 startY: currentY,
-                head: [['#', 'Insumo / Material Solicitado', 'Cant. Total', 'Destinos Involucrados']],
+                head: [['#', 'Material / Insumo Solicitado', 'Cantidad Total']],
                 body: tableConsolidadoData,
-                theme: 'grid',
+                theme: 'striped',
                 headStyles: {
                     fillColor: primaryColor,
                     textColor: [255, 255, 255],
                     fontStyle: 'bold',
-                    fontSize: 8.5,
+                    fontSize: 9,
                     halign: 'left'
                 },
                 columnStyles: {
-                    0: { cellWidth: 10, halign: 'center' },
-                    1: { cellWidth: 70, fontStyle: 'bold' },
-                    2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', textColor: primaryColor },
-                    3: { cellWidth: 'auto', fontSize: 7.5, textColor: [70, 80, 95] }
+                    0: { cellWidth: 12, halign: 'center' },
+                    1: { cellWidth: 'auto', fontStyle: 'bold' },
+                    2: { cellWidth: 35, halign: 'center', fontStyle: 'bold', textColor: primaryColor }
                 },
-                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2.5, textColor: darkTextColor },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
                 margin: { left: margin, right: margin }
             });
 
             currentY = doc.lastAutoTable.finalY + 8;
 
-            // 4. SECCIÓN 2: DESGLOSE POR UBICACIÓN
-            if (currentY > pageHeight - 75) {
-                doc.addPage();
-                currentY = margin + 5;
-            }
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10.5);
-            doc.setTextColor(...secondaryColor);
-            doc.text('2. DESGLOSE DETALLADO DE REPOSICIÓN POR UBICACIÓN', margin, currentY);
-
-            doc.setFont('helvetica', 'italic');
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            doc.text('Guía para ubicar y reponer en cada botiquín, cajón o armario (Checklist [ ✓ ])', margin, currentY + 4);
-
-            currentY += 6;
-
-            const tableDesgloseData = [];
-            let itemCounter = 1;
-
-            consolidated.forEach(item => {
-                item.destinos.forEach((dest, dIdx) => {
-                    tableDesgloseData.push([
-                        dIdx === 0 ? itemCounter++ : '',
-                        dIdx === 0 ? item.material : `  ↳ (continuación)`,
-                        dest.ubicacion,
-                        dest.cantidad,
-                        '[   ]'
-                    ]);
-                });
-            });
-
-            doc.autoTable({
-                startY: currentY,
-                head: [['#', 'Material', 'Ubicación / Destino Específico', 'Cant.', 'Check']],
-                body: tableDesgloseData,
-                theme: 'grid',
-                headStyles: {
-                    fillColor: secondaryColor,
-                    textColor: [255, 255, 255],
-                    fontStyle: 'bold',
-                    fontSize: 8.5,
-                    halign: 'left'
-                },
-                columnStyles: {
-                    0: { cellWidth: 10, halign: 'center' },
-                    1: { cellWidth: 65 },
-                    2: { cellWidth: 'auto', fontStyle: 'bold' },
-                    3: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
-                    4: { cellWidth: 18, halign: 'center', fontStyle: 'bold', textColor: [120, 120, 120] }
-                },
-                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
-                alternateRowStyles: { fillColor: [244, 247, 250] },
-                margin: { left: margin, right: margin }
-            });
-
-            currentY = doc.lastAutoTable.finalY + 8;
-
-            // 5. CUADRO DE OBSERVACIONES
+            // 4. CUADRO DE OBSERVACIONES
             if (currentY > pageHeight - 40) {
                 doc.addPage();
                 currentY = margin + 8;
             }
 
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9.5);
+            doc.setFontSize(9);
             doc.setTextColor(...darkTextColor);
             doc.text('OBSERVACIONES / NOTAS:', margin, currentY);
 
             currentY += 3.5;
 
-            const obsBoxHeight = 24;
+            const obsBoxHeight = 22;
             doc.setDrawColor(203, 213, 225);
             doc.setFillColor(250, 252, 255);
             doc.roundedRect(margin, currentY, pageWidth - (margin * 2), obsBoxHeight, 2, 2, 'FD');
 
             doc.setDrawColor(226, 232, 240);
             doc.setLineDashPattern([2, 2], 0);
-            doc.line(margin + 4, currentY + 8, pageWidth - margin - 4, currentY + 8);
-            doc.line(margin + 4, currentY + 15, pageWidth - margin - 4, currentY + 15);
-            doc.line(margin + 4, currentY + 21, pageWidth - margin - 4, currentY + 21);
+            doc.line(margin + 4, currentY + 7, pageWidth - margin - 4, currentY + 7);
+            doc.line(margin + 4, currentY + 14, pageWidth - margin - 4, currentY + 14);
+            doc.line(margin + 4, currentY + 20, pageWidth - margin - 4, currentY + 20);
             doc.setLineDashPattern([], 0);
 
             // Numeración de páginas
@@ -5393,14 +5400,14 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             }
 
             const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
-            const fileName = `Pedido_Ambulancia_${un}.pdf`;
+            const fileName = `Solicitud_Material_Ambulancia_${un}.pdf`;
 
             if (forceDirectDownload) {
                 doc.save(fileName);
-                toast('✅ PDF de Pedido de Ambulancia descargado.', 'success');
+                toast('✅ PDF de Solicitud descargado.', 'success');
             } else {
-                await exportAndSharePDF(doc, fileName, 'Pedido Ambulancia (Guardia)', `Pedido de reposición para ambulancia ${appData.metadata.unidad}`);
-                toast('✅ PDF de Pedido de Ambulancia generado con éxito.', 'success');
+                await exportAndSharePDF(doc, fileName, 'Solicitud Material Ambulancia', `Solicitud de reposición para ambulancia ${appData.metadata.unidad}`);
+                toast('✅ PDF de Solicitud generado con éxito.', 'success');
             }
         }
 
@@ -5415,7 +5422,6 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 14;
             const primaryColor = [16, 185, 129];
-            const secondaryColor = [21, 101, 192];
             const darkTextColor = [30, 41, 59];
 
             if (!appData.monthlyOrders.length) {
@@ -5427,21 +5433,12 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             appData.monthlyOrders.forEach(r => {
                 const matName = (r.material || '').trim();
                 const key = matName.toLowerCase();
-                const loc = (r.location || 'General').trim();
                 const cant = Number(monthlyUnits(r)) || 0;
 
                 if (!consolidatedMap.has(key)) {
-                    consolidatedMap.set(key, { material: matName, totalCantidad: 0, destinos: [] });
+                    consolidatedMap.set(key, { material: matName, totalCantidad: 0 });
                 }
-                const entry = consolidatedMap.get(key);
-                entry.totalCantidad += cant;
-
-                const exDest = entry.destinos.find(d => d.ubicacion.toLowerCase() === loc.toLowerCase());
-                if (exDest) {
-                    exDest.cantidad += cant;
-                } else {
-                    entry.destinos.push({ ubicacion: loc, cantidad: cant });
-                }
+                consolidatedMap.get(key).totalCantidad += cant;
             });
 
             const consolidated = Array.from(consolidatedMap.values());
@@ -5450,12 +5447,12 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             doc.setFillColor(...primaryColor);
             doc.rect(margin, margin, pageWidth - (margin * 2), 22, 'F');
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
+            doc.setFontSize(13);
             doc.setTextColor(255, 255, 255);
-            doc.text('PEDIDO MENSUAL DE MATERIAL SANITARIO', margin + 6, margin + 9);
+            doc.text('SOLICITUD DE MATERIAL SANITARIO · PEDIDO MENSUAL', margin + 6, margin + 9);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
-            doc.text('Unidad: ' + (appData.metadata.unidad || '1315') + ' • Reposición Mensual', margin + 6, margin + 16);
+            doc.text('Unidad: ' + (appData.metadata.unidad || '1315') + ' • Solicitud para Almacén / Farmacia', margin + 6, margin + 16);
 
             // Metadatos
             let currentY = margin + 27;
@@ -5485,77 +5482,32 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             currentY += 19;
 
-            // SECCIÓN 1: TOTALES
+            // TABLA DE TOTALES
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10.5);
+            doc.setFontSize(10);
             doc.setTextColor(...primaryColor);
-            doc.text('1. RESUMEN CONSOLIDADO PARA ALMACÉN / FARMACIA (TOTALES)', margin, currentY);
-            currentY += 4.5;
+            doc.text('MATERIAL SANITARIO A SOLICITAR:', margin, currentY);
+            currentY += 4;
 
             const tableTotales = consolidated.map((c, i) => [
                 i + 1,
                 c.material,
-                c.totalCantidad,
-                c.destinos.map(d => `${d.ubicacion}: ${d.cantidad}`).join('; ')
+                c.totalCantidad
             ]);
 
             doc.autoTable({
                 startY: currentY,
-                head: [['#', 'Material / Insumo', 'Total Pedir', 'Desglose Rápido por Ubicaciones']],
+                head: [['#', 'Material / Insumo Solicitado', 'Cantidad Total']],
                 body: tableTotales,
                 theme: 'striped',
-                headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+                headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
                 columnStyles: {
-                    0: { cellWidth: 10, halign: 'center' },
-                    1: { cellWidth: 70, fontStyle: 'bold' },
-                    2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', textColor: primaryColor },
-                    3: { cellWidth: 'auto', fontSize: 7.5, textColor: [70, 80, 95] }
+                    0: { cellWidth: 12, halign: 'center' },
+                    1: { cellWidth: 'auto', fontStyle: 'bold' },
+                    2: { cellWidth: 35, halign: 'center', fontStyle: 'bold', textColor: primaryColor }
                 },
-                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2.5, textColor: darkTextColor },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
-                margin: { left: margin, right: margin }
-            });
-
-            currentY = doc.lastAutoTable.finalY + 8;
-
-            // SECCIÓN 2: DESGLOSE POR UBICACIÓN
-            if (currentY > pageHeight - 75) { doc.addPage(); currentY = margin + 5; }
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10.5);
-            doc.setTextColor(...secondaryColor);
-            doc.text('2. DESGLOSE DETALLADO DE REPOSICIÓN POR UBICACIÓN', margin, currentY);
-            currentY += 4.5;
-
-            const tableDesglose = [];
-            let cIdx = 1;
-            consolidated.forEach(item => {
-                item.destinos.forEach((dest, dIdx) => {
-                    tableDesglose.push([
-                        dIdx === 0 ? cIdx++ : '',
-                        dIdx === 0 ? item.material : '  ↳ (continuación)',
-                        dest.ubicacion,
-                        dest.cantidad,
-                        '[   ]'
-                    ]);
-                });
-            });
-
-            doc.autoTable({
-                startY: currentY,
-                head: [['#', 'Material', 'Ubicación', 'Cant.', 'Check']],
-                body: tableDesglose,
-                theme: 'grid',
-                headStyles: { fillColor: secondaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-                columnStyles: {
-                    0: { cellWidth: 10, halign: 'center' },
-                    1: { cellWidth: 65 },
-                    2: { cellWidth: 'auto', fontStyle: 'bold' },
-                    3: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
-                    4: { cellWidth: 18, halign: 'center', fontStyle: 'bold', textColor: [120, 120, 120] }
-                },
-                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
-                alternateRowStyles: { fillColor: [244, 247, 250] },
                 margin: { left: margin, right: margin }
             });
 
@@ -5564,18 +5516,18 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             // Cuadro Observaciones
             if (currentY > pageHeight - 40) { doc.addPage(); currentY = margin + 8; }
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9.5);
+            doc.setFontSize(9);
             doc.setTextColor(...darkTextColor);
             doc.text('OBSERVACIONES / NOTAS:', margin, currentY);
             currentY += 3.5;
             doc.setDrawColor(203, 213, 225);
             doc.setFillColor(250, 252, 255);
-            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 24, 2, 2, 'FD');
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 22, 2, 2, 'FD');
             doc.setDrawColor(226, 232, 240);
             doc.setLineDashPattern([2, 2], 0);
-            doc.line(margin + 4, currentY + 8, pageWidth - margin - 4, currentY + 8);
-            doc.line(margin + 4, currentY + 15, pageWidth - margin - 4, currentY + 15);
-            doc.line(margin + 4, currentY + 21, pageWidth - margin - 4, currentY + 21);
+            doc.line(margin + 4, currentY + 7, pageWidth - margin - 4, currentY + 7);
+            doc.line(margin + 4, currentY + 14, pageWidth - margin - 4, currentY + 14);
+            doc.line(margin + 4, currentY + 20, pageWidth - margin - 4, currentY + 20);
             doc.setLineDashPattern([], 0);
 
             const totalPages = doc.getNumberOfPages();
@@ -5583,18 +5535,18 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
                 doc.setPage(i);
                 doc.setFontSize(8);
                 doc.setTextColor(140, 150, 160);
-                doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+                doc.text(`Página ${i} de ${totalPages} • ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
             }
 
             const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
-            const fileName = `Pedido_Mensual_${un}.pdf`;
+            const fileName = `Solicitud_Material_Mensual_${un}.pdf`;
 
             if (forceDirectDownload) {
                 doc.save(fileName);
-                toast('✅ PDF de Pedido Mensual descargado.', 'success');
+                toast('✅ PDF de Solicitud descargado.', 'success');
             } else {
-                await exportAndSharePDF(doc, fileName, 'Pedido Mensual', `Pedido Mensual de unidad ${appData.metadata.unidad}`);
-                toast('✅ PDF de Pedido Mensual generado con éxito.', 'success');
+                await exportAndSharePDF(doc, fileName, 'Solicitud Material Mensual', `Solicitud de material mensual para unidad ${appData.metadata.unidad}`);
+                toast('✅ PDF de Solicitud generado con éxito.', 'success');
             }
         }
 
@@ -5609,7 +5561,6 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 14;
             const primaryColor = [16, 185, 129]; // #10b981
-            const secondaryColor = [21, 101, 192]; // #1565c0
             const darkTextColor = [30, 41, 59];
 
             const ambulanceItems = appData.inventory.filter(it => it.order > 0);
@@ -5627,58 +5578,45 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             ambulanceItems.forEach(it => {
                 const name = (it.material || '').trim();
                 const key = name.toLowerCase();
-                const loc = (it.category || 'Ambulancia').trim();
                 const cant = Number(it.order) || 0;
                 if (!map.has(key)) {
-                    map.set(key, { material: name, total: 0, cantAmbulancia: 0, cantMensual: 0, destinos: [] });
+                    map.set(key, { material: name, total: 0, cantAmbulancia: 0, cantMensual: 0 });
                 }
                 const entry = map.get(key);
                 entry.total += cant;
                 entry.cantAmbulancia += cant;
-                entry.destinos.push({ origen: 'Ambulancia', ubicacion: loc, cantidad: cant });
             });
 
             // 2. Insumos del pedido mensual
             monthlyItems.forEach(r => {
                 const name = (r.material || '').trim();
                 const key = name.toLowerCase();
-                const loc = (r.location || 'Armario / Almacén').trim();
                 const cant = Number(monthlyUnits(r)) || 0;
                 if (!map.has(key)) {
-                    map.set(key, { material: name, total: 0, cantAmbulancia: 0, cantMensual: 0, destinos: [] });
+                    map.set(key, { material: name, total: 0, cantAmbulancia: 0, cantMensual: 0 });
                 }
                 const entry = map.get(key);
                 entry.total += cant;
                 entry.cantMensual += cant;
-
-                const ex = entry.destinos.find(d => d.origen === 'Mensual' && d.ubicacion.toLowerCase() === loc.toLowerCase());
-                if (ex) {
-                    ex.cantidad += cant;
-                } else {
-                    entry.destinos.push({ origen: 'Mensual', ubicacion: loc, cantidad: cant });
-                }
             });
 
             const consolidated = Array.from(map.values());
-            const totalUnitsAmbulance = ambulanceItems.reduce((a, i) => a + i.order, 0);
-            const totalUnitsMonthly = monthlyItems.reduce((a, r) => a + monthlyUnits(r), 0);
-            const totalUnitsGlobal = totalUnitsAmbulance + totalUnitsMonthly;
 
             // 1. ENCABEZADO
             doc.setFillColor(...primaryColor);
-            doc.rect(margin, margin, pageWidth - (margin * 2), 24, 'F');
+            doc.rect(margin, margin, pageWidth - (margin * 2), 22, 'F');
 
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
+            doc.setFontSize(13);
             doc.setTextColor(255, 255, 255);
-            doc.text('PEDIDO CONJUNTO · AMBULANCIA + MENSUAL', margin + 6, margin + 10);
+            doc.text('SOLICITUD DE MATERIAL SANITARIO · PEDIDO CONJUNTO', margin + 6, margin + 9);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
-            doc.text(`Consolidado Global: Almacén Central & Farmacia • Unidad ${appData.metadata.unidad || '1315'}`, margin + 6, margin + 18);
+            doc.text(`Reposición Ambulancia + Mensual • Unidad ${appData.metadata.unidad || '1315'} • Solicitud para Almacén / Farmacia`, margin + 6, margin + 16);
 
             // 2. METADATOS
-            let currentY = margin + 29;
+            let currentY = margin + 27;
             doc.setDrawColor(203, 213, 225);
             doc.setFillColor(248, 250, 252);
             doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 14, 2, 2, 'FD');
@@ -5706,12 +5644,12 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             currentY += 19;
 
-            // 3. SECCIÓN 1: TOTALES CONSOLIDADOS PARA ALMACÉN
+            // 3. TABLA DE TOTALES CONSOLIDADOS PARA ALMACÉN
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10.5);
+            doc.setFontSize(10);
             doc.setTextColor(...primaryColor);
-            doc.text('1. RESUMEN CONSOLIDADO TOTAL PARA ALMACÉN / FARMACIA', margin, currentY);
-            currentY += 4.5;
+            doc.text('MATERIAL SANITARIO A SOLICITAR (CONSOLIDADO):', margin, currentY);
+            currentY += 4;
 
             const tableTotales = consolidated.map((c, i) => {
                 const origenTxt = [];
@@ -5727,88 +5665,38 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
             doc.autoTable({
                 startY: currentY,
-                head: [['#', 'Material / Insumo Solicitado', 'Total a Pedir', 'Procedencia (Desglose de Pedidos)']],
+                head: [['#', 'Material / Insumo Solicitado', 'Total a Pedir', 'Desglose de Origen']],
                 body: tableTotales,
                 theme: 'striped',
-                headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+                headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
                 columnStyles: {
-                    0: { cellWidth: 10, halign: 'center' },
+                    0: { cellWidth: 12, halign: 'center' },
                     1: { cellWidth: 70, fontStyle: 'bold' },
-                    2: { cellWidth: 26, halign: 'center', fontStyle: 'bold', textColor: primaryColor },
-                    3: { cellWidth: 'auto', fontSize: 7.5, textColor: [70, 80, 95] }
+                    2: { cellWidth: 28, halign: 'center', fontStyle: 'bold', textColor: primaryColor },
+                    3: { cellWidth: 'auto', fontSize: 8, textColor: [70, 80, 95] }
                 },
-                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
+                bodyStyles: { fontSize: 8.5, cellPadding: 2.5, textColor: darkTextColor },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
                 margin: { left: margin, right: margin }
             });
 
             currentY = doc.lastAutoTable.finalY + 8;
 
-            // 4. SECCIÓN 2: DESGLOSE POR DESTINO & REPOSICIÓN
-            if (currentY > pageHeight - 75) { doc.addPage(); currentY = margin + 5; }
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10.5);
-            doc.setTextColor(...secondaryColor);
-            doc.text('2. DESGLOSE DETALLADO DE REPOSICIÓN POR DESTINO', margin, currentY);
-
-            doc.setFont('helvetica', 'italic');
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            doc.text('Guía para ubicar y verificar el material repartido (Checklist [ ✓ ])', margin, currentY + 4);
-            currentY += 6;
-
-            const tableDesglose = [];
-            let cIdx = 1;
-            consolidated.forEach(item => {
-                item.destinos.forEach((dest, dIdx) => {
-                    tableDesglose.push([
-                        dIdx === 0 ? cIdx++ : '',
-                        dIdx === 0 ? item.material : '  ↳ (continuación)',
-                        dest.origen,
-                        dest.ubicacion,
-                        dest.cantidad,
-                        '[   ]'
-                    ]);
-                });
-            });
-
-            doc.autoTable({
-                startY: currentY,
-                head: [['#', 'Material', 'Tipo Pedido', 'Ubicación / Compartimento', 'Cant.', 'Check']],
-                body: tableDesglose,
-                theme: 'grid',
-                headStyles: { fillColor: secondaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-                columnStyles: {
-                    0: { cellWidth: 10, halign: 'center' },
-                    1: { cellWidth: 55 },
-                    2: { cellWidth: 32, fontSize: 7.5, fontStyle: 'bold' },
-                    3: { cellWidth: 'auto', fontStyle: 'bold' },
-                    4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
-                    5: { cellWidth: 16, halign: 'center', fontStyle: 'bold', textColor: [120, 120, 120] }
-                },
-                bodyStyles: { fontSize: 8.5, cellPadding: 2, textColor: darkTextColor },
-                alternateRowStyles: { fillColor: [244, 247, 250] },
-                margin: { left: margin, right: margin }
-            });
-
-            currentY = doc.lastAutoTable.finalY + 8;
-
-            // 5. CUADRO DE OBSERVACIONES
+            // 4. CUADRO DE OBSERVACIONES
             if (currentY > pageHeight - 40) { doc.addPage(); currentY = margin + 8; }
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9.5);
+            doc.setFontSize(9);
             doc.setTextColor(...darkTextColor);
             doc.text('OBSERVACIONES / NOTAS:', margin, currentY);
             currentY += 3.5;
             doc.setDrawColor(203, 213, 225);
             doc.setFillColor(250, 252, 255);
-            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 24, 2, 2, 'FD');
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 22, 2, 2, 'FD');
             doc.setDrawColor(226, 232, 240);
             doc.setLineDashPattern([2, 2], 0);
-            doc.line(margin + 4, currentY + 8, pageWidth - margin - 4, currentY + 8);
-            doc.line(margin + 4, currentY + 15, pageWidth - margin - 4, currentY + 15);
-            doc.line(margin + 4, currentY + 21, pageWidth - margin - 4, currentY + 21);
+            doc.line(margin + 4, currentY + 7, pageWidth - margin - 4, currentY + 7);
+            doc.line(margin + 4, currentY + 14, pageWidth - margin - 4, currentY + 14);
+            doc.line(margin + 4, currentY + 20, pageWidth - margin - 4, currentY + 20);
             doc.setLineDashPattern([], 0);
 
             const totalPages = doc.getNumberOfPages();
@@ -5820,19 +5708,142 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             }
 
             const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
-            const fileName = `Pedido_Conjunto_Ambulancia_y_Mensual_${un}.pdf`;
+            const fileName = `Solicitud_Material_Conjunto_${un}.pdf`;
 
             if (forceDirectDownload) {
                 doc.save(fileName);
-                toast('✅ PDF de Pedido Conjunto descargado.', 'success');
+                toast('✅ PDF de Solicitud descargado.', 'success');
             } else {
-                await exportAndSharePDF(doc, fileName, 'Pedido Conjunto (Ambulancia + Mensual)', `Pedido conjunto de material para unidad ${appData.metadata.unidad}`);
-                toast('✅ PDF de Pedido Conjunto generado con éxito.', 'success');
+                await exportAndSharePDF(doc, fileName, 'Solicitud Material Conjunto', `Solicitud de reposición para unidad ${appData.metadata.unidad}`);
+                toast('✅ PDF de Solicitud generado con éxito.', 'success');
             }
         }
 
         async function handleDownloadCombinedOrderPDFDirect() {
             await handleExportCombinedOrderPDF(true);
+        }
+
+        // ============================================================
+        //  MODO REPOSICIÓN · CHECKLIST INTERACTIVO EN EL MÓVIL
+        // ============================================================
+        let curRepFilter = 'all';
+        let repCheckedMap = {};
+
+        function loadRepChecked() {
+            try {
+                const stored = localStorage.getItem(`rep_checked_${appData.metadata.unidad || '1315'}`);
+                if (stored) repCheckedMap = JSON.parse(stored);
+            } catch(e) { repCheckedMap = {}; }
+        }
+
+        function saveRepChecked() {
+            try {
+                localStorage.setItem(`rep_checked_${appData.metadata.unidad || '1315'}`, JSON.stringify(repCheckedMap));
+            } catch(e) {}
+        }
+
+        function toggleRepItem(key) {
+            repCheckedMap[key] = !repCheckedMap[key];
+            saveRepChecked();
+            renderRepositionChecklist();
+        }
+
+        function resetRepositionChecklist() {
+            if (confirm('¿Deseas reiniciar todas las casillas del checklist de reposición?')) {
+                repCheckedMap = {};
+                saveRepChecked();
+                renderRepositionChecklist();
+                toast('Checklist reiniciado.', 'info');
+            }
+        }
+
+        function setRepFilter(f) {
+            curRepFilter = f;
+            document.querySelectorAll('#reposition-section .chip').forEach(ch => ch.classList.remove('is-active'));
+            const activeChip = document.getElementById('rep-filter-' + f);
+            if (activeChip) activeChip.classList.add('is-active');
+            renderRepositionChecklist();
+        }
+
+        function renderRepositionChecklist() {
+            const listEl = document.getElementById('reposition-list');
+            const barEl = document.getElementById('reposition-progress-bar');
+            const statusEl = document.getElementById('reposition-status-text');
+            const completeBadge = document.getElementById('reposition-complete-badge');
+            if (!listEl) return;
+
+            loadRepChecked();
+
+            const ambulanceItems = appData.inventory.filter(it => it.order > 0).map(it => ({
+                origen: 'Ambulancia',
+                material: it.material,
+                ubicacion: it.category || 'Ambulancia (General)',
+                cantidad: it.order
+            }));
+
+            const monthlyItems = (appData.monthlyOrders || []).map(r => ({
+                origen: 'Mensual',
+                material: r.material,
+                ubicacion: r.location || 'Armario de reposición / Almacén',
+                cantidad: monthlyUnits(r)
+            }));
+
+            let allItems = [];
+            if (curRepFilter === 'all') allItems = [...ambulanceItems, ...monthlyItems];
+            else if (curRepFilter === 'amb') allItems = [...ambulanceItems];
+            else if (curRepFilter === 'mo') allItems = [...monthlyItems];
+
+            if (!allItems.length) {
+                listEl.innerHTML = '<div class="empty-state" style="padding:16px;background:var(--surface-2);border-radius:12px;color:var(--text-faint);">No hay materiales pendientes de reponer para este filtro.</div>';
+                if (barEl) barEl.style.width = '0%';
+                if (statusEl) statusEl.textContent = '0 de 0 insumos colocados (0%)';
+                if (completeBadge) completeBadge.style.display = 'none';
+                return;
+            }
+
+            // Agrupar por compartimento / ubicación
+            const groupsMap = new Map();
+            allItems.forEach(item => {
+                const u = item.ubicacion || 'General';
+                if (!groupsMap.has(u)) groupsMap.set(u, []);
+                groupsMap.get(u).push(item);
+            });
+
+            let totalItems = allItems.length;
+            let checkedCount = 0;
+
+            let html = '';
+            groupsMap.forEach((items, loc) => {
+                const isLocAmbulance = items.some(i => i.origen === 'Ambulancia');
+                const icon = isLocAmbulance ? '🚑' : '📅';
+                html += `
+                    <div class="reposition-group">
+                        <div class="reposition-group__title">
+                            <span>${icon} <strong>${escapeHtml(loc)}</strong></span>
+                            <span style="font-size:11.5px;color:var(--text-faint);">${items.length} insumos</span>
+                        </div>
+                `;
+                items.forEach(item => {
+                    const key = `${item.origen}_${item.material}_${item.ubicacion}`.toLowerCase();
+                    const isChecked = !!repCheckedMap[key];
+                    if (isChecked) checkedCount++;
+                    html += `
+                        <div class="reposition-item ${isChecked ? 'is-checked' : ''}" onclick="toggleRepItem('${escapeHtml(key)}')">
+                            <div class="reposition-item__box">${isChecked ? '✓' : ''}</div>
+                            <div class="reposition-item__name">${escapeHtml(item.material)}</div>
+                            <div class="reposition-item__qty">${item.cantidad} uds</div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            });
+
+            listEl.innerHTML = html;
+
+            const percent = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
+            if (barEl) barEl.style.width = `${percent}%`;
+            if (statusEl) statusEl.textContent = `${checkedCount} de ${totalItems} insumos colocados (${percent}%)`;
+            if (completeBadge) completeBadge.style.display = (totalItems > 0 && checkedCount === totalItems) ? 'inline-block' : 'none';
         }
 
         // ---- Toast ----
@@ -5919,6 +5930,10 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.handleExportCombinedOrderPDF = handleExportCombinedOrderPDF;
         window.handleDownloadCombinedOrderPDFDirect = handleDownloadCombinedOrderPDFDirect;
         window.switchTab = switchTab;
+        window.toggleRepItem = toggleRepItem;
+        window.resetRepositionChecklist = resetRepositionChecklist;
+        window.setRepFilter = setRepFilter;
+        window.renderRepositionChecklist = renderRepositionChecklist;
 
         loadData();
         setup();
