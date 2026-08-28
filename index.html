@@ -298,7 +298,7 @@
 
         .mo-add { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
         .mo-add input {
-            flex: 1 1 120px; min-width: 0; background: var(--surface-2); border: 1px solid var(--border);
+            background: var(--surface-2); border: 1px solid var(--border);
             border-radius: 11px; height: 44px; padding: 0 12px; font-size: 14px; outline: 0;
             transition: border-color .15s, box-shadow .15s;
         }
@@ -307,20 +307,30 @@
             height: 44px; padding: 0 16px; border: 0; border-radius: 11px; cursor: pointer;
             background: linear-gradient(135deg, var(--accent), var(--primary)); color: #04121a; font-weight: 800; font-size: 14px;
         }
-        .mo-add input[name="qty"] { flex: 0 0 130px; text-align: left; }
 
-        .mo-row { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 12px; padding: 9px 12px; margin-bottom: 8px; }
-        .mo-row__name { flex: 1; font-weight: 600; font-size: 14px; }
-        .mo-row__loc { font-size: 11.5px; color: var(--text-faint); }
-        .mo-row__qty {
-            font-size: 18px; font-weight: 800; color: var(--accent); min-width: 92px;
-            text-align: center; font-variant-numeric: tabular-nums;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-            height: 44px; outline: 0; font-family: inherit; -moz-appearance: textfield;
+        .mo-card {
+            background: var(--surface-2); border: 1px solid var(--border-soft);
+            border-radius: 12px; padding: 10px 12px; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
             transition: border-color .15s, box-shadow .15s;
         }
-        .mo-row__qty::-webkit-outer-spin-button, .mo-row__qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .mo-row__qty:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+        .mo-card:hover { border-color: var(--border); }
+        .mo-card__info { flex: 1 1 200px; min-width: 0; }
+        .mo-card__title { font-weight: 700; font-size: 14px; color: var(--text); }
+        .mo-card__loc { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+        .mo-stepper { display: flex; align-items: center; gap: 3px; }
+        .mo-stepper__btn {
+            width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--surface); color: var(--text); font-weight: 800; font-size: 15px;
+            display: grid; place-items: center; cursor: pointer;
+        }
+        .mo-stepper__btn:active { background: var(--surface-3); transform: scale(.95); }
+        .mo-stepper__val {
+            min-width: 44px; max-width: 58px; height: 34px; border: 1px solid var(--border); border-radius: 8px;
+            background: var(--surface); text-align: center; font-weight: 800; font-size: 14px;
+            color: var(--accent); padding: 0 4px; outline: 0;
+        }
+        .mo-card__actions { display: flex; gap: 4px; align-items: center; }
 
         /* ============================================================
            TABLA (desktop)
@@ -3872,18 +3882,55 @@
             </table>
         </section>
 
-        <!-- Pedido mensual -->
-        <section class="panel">
-            <div class="panel__title"><span class="spark">📅</span> Pedido mensual <span style="margin-left:auto;font-size:12px;color:var(--text-faint);font-weight:600;" id="mo-total">0 uds</span></div>
-            <form class="mo-add" id="mo-form">
-                <input type="text" name="material" placeholder="Material" list="mo-material-datalist" required="">
-                <datalist id="mo-material-datalist"><option value="ALCOHOL"></option><option value="AGUA OXIGENADA"></option><option value="GASAS ESTERIL"></option><option value="COMPRESAS ESTERIL"></option><option value="VENDA CREPE  15X 10"></option><option value="VENDA CREPE 10 X 5"></option><option value="VENDA CREPE 5X4"></option><option value="VENDA GASAS 5X5"></option><option value="VENDA GASAS 10X10"></option><option value="SUERO DE IRRIG 250ML"></option><option value="SUERO DE IRRIG 100ML"></option><option value="SUERO DE IRRIG 500ML"></option><option value="ESPARATRAPO RECORTABLE"></option><option value="ELECTRODO DESA ADU"></option><option value="ELECTRODO DESA PED"></option><option value="RESERVORIO ADULT"></option><option value="RESERVORIO PED"></option><option value="NEBULIZADOR ADULT"></option><option value="NEBULIZADOR PED"></option><option value="GAFAS NASALES ADULT"></option><option value="GAFAS NASALES PED"></option><option value="VENTIMASK ADULT"></option><option value="VENTIMASK PED"></option><option value="ALARGADERA"></option><option value="FILTROS  AMBU"></option><option value="CANULA DE GUEDEL 00"></option><option value="CANULA DE GUEDEL 0"></option><option value="CANULA DE GUEDEL 1"></option><option value="CANULA DE GUEDEL 2"></option><option value="CANULA DE GUEDEL 3"></option><option value="CANULA DE GUEDEL 4"></option><option value="CANULA DE GUEDEL 5"></option><option value="BOLSA DE VOMITOS"></option><option value="TIRA DE GLUCOMETRO"></option><option value="LANCETAS"></option><option value="MANTA TERMICA"></option><option value="CONO TIMPANICOS"></option><option value="SONDA DE ASP 1 DE CADA"></option><option value="RASURADORA"></option><option value="EMPAPADORES"></option><option value="BATAS"></option><option value="MASCARILLA FFP3"></option><option value="MASCARILLA QUIRURGICAS"></option><option value="MASCARILLA FFP2"></option><option value="BUZOS XXL"></option><option value="BUZOSXL"></option><option value="BUZOS L"></option><option value="BUZOS M"></option><option value="BUZOS S"></option><option value="GUANTES XL"></option><option value="GUANTES L"></option><option value="GUANTES M"></option><option value="GUANTES S"></option><option value="ROLLO IMPRESORA"></option><option value="GLUCOSA GEL"></option><option value="BATEA"></option><option value="GEL HIDROALCOLICO"></option><option value="TUBULADURA ASP"></option><option value="VASOS DE ASPIRADOR"></option><option value="PARTE DE ASISTENCIA"></option><option value="LEJIA"></option><option value="PAPEL HIGENICO"></option><option value="PAPEL DISPENSADOR"></option><option value="JABON DE MANO"></option><option value="JABON LAVAVAJILLAS"></option><option value="BOLSAS NEGRA PEQUE A"></option><option value="BOLSA AMARILLA PEQUE A"></option><option value="BOLSA AMARILLA GRANDE"></option><option value="OXIVIR"></option><option value="biofresh"></option><option value="Check list"></option></datalist>
-                <input type="text" name="qty" placeholder="Cant. (p.ej. de cada)" value="">
-                <input type="text" name="location" placeholder="Ubicación">
-                <button class="mo-add__btn" type="submit">➕ Añadir</button>
+        <!-- Pedido mensual mejorado -->
+        <section class="panel" id="panel-pedido-mensual">
+            <div class="panel__title" style="flex-wrap:wrap; gap:10px;">
+                <span style="display:flex;align-items:center;gap:6px;"><span class="spark">📅</span> Pedido Mensual Independiente</span>
+                <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <span class="badge" style="background:var(--accent-dim);color:var(--accent);font-weight:700;padding:4px 8px;border-radius:8px;" id="mo-stats">0 insumos · 0 uds</span>
+                    <button type="button" class="btn btn--ghost" style="height:32px;padding:0 10px;font-size:12px;cursor:pointer;" onclick="clearMonthlyOrder()" title="Limpiar lista">🔄 Limpiar</button>
+                </div>
+            </div>
+
+            <!-- Formulario de Alta Rápida de Línea -->
+            <form class="mo-add" id="mo-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+                <input type="text" name="material" placeholder="Insumo / Material" list="mo-material-datalist" required="" style="flex:2 1 180px;">
+                <datalist id="mo-material-datalist"></datalist>
+
+                <input type="text" name="location" placeholder="Ubicación (Botiquín, Cajón, Armario...)" list="mo-location-datalist" style="flex:2 1 180px;">
+                <datalist id="mo-location-datalist">
+                    <option value="Armario de reposición / Almacén"></option>
+                    <option value="Botiquín Circulatorio / Vía Venosa"></option>
+                    <option value="Botiquín Respiratorio / Vía Aérea"></option>
+                    <option value="Botiquín de Trauma / Inmovilización"></option>
+                    <option value="Botiquín Pediátrico"></option>
+                    <option value="Cajón de Curas"></option>
+                    <option value="Cajón de Medicación / Ampulario"></option>
+                    <option value="Cajón de Vía Aérea"></option>
+                    <option value="Mochila de Ataque / Rescate"></option>
+                    <option value="Cabina Asistencial (General)"></option>
+                </datalist>
+
+                <input type="number" name="qty" placeholder="Cant." min="1" step="any" value="1" style="flex:0 0 85px;text-align:center;font-weight:700;">
+
+                <button class="mo-add__btn" type="submit" style="flex:0 0 auto;">➕ Añadir Línea</button>
             </form>
-            <div id="mo-list"><div class="hero__date" style="padding:6px 0">Sin materiales en el pedido mensual.</div></div>
-            <button class="hero__btn" style="width:100%;justify-content:center;margin-top:6px;" onclick="handleExportMonthlyOrderPDF()">📄 Exportar PDF</button>
+
+            <!-- Lista interactiva de Items -->
+            <div id="mo-list" style="margin-bottom:14px;"></div>
+
+            <!-- Resumen Consolidado en Tiempo Real (Live Preview) -->
+            <div class="mo-summary" id="mo-summary-box" style="display:none; margin-bottom:14px; background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; padding:12px;">
+                <div style="font-size:12px; font-weight:800; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px; display:flex; justify-content:space-between;">
+                    <span>📊 Resumen Consolidado (Totales por Insumo)</span>
+                    <span id="mo-unique-count" style="color:var(--accent);">0 distintos</span>
+                </div>
+                <div id="mo-consolidated-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px;"></div>
+            </div>
+
+            <button class="hero__btn" style="width:100%;justify-content:center;height:48px;font-size:15px;" onclick="handleExportMonthlyOrderPDF()">
+                📄 Exportar PDF Pedido Mensual (Totales + Desglose)
+            </button>
         </section>
 
     </main>
@@ -4329,24 +4376,100 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
 
         function renderMonthly() {
             const list = document.getElementById('mo-list');
-            if (!appData.monthlyOrders.length) {
-                list.innerHTML = '<div class="hero__date" style="padding:6px 0">Sin materiales en el pedido mensual.</div>';
-            } else {
-                list.innerHTML = appData.monthlyOrders.map((r, i) => `
-                    <div class="mo-row">
-                        <div class="mo-row__name">${escapeHtml(r.material)}<div class="mo-row__loc">📌 ${escapeHtml(r.location || '')}</div></div>
-                        <input class="mo-row__qty" type="text" inputmode="text" placeholder="¿Cant.?" value="${escapeHtml(r.quantity || '')}" onchange="setMonthlyQty(${i}, this.value)">
-                        <button class="mini mini--del" title="Eliminar" onclick="deleteMonthlyItem(${i})">🗑️</button>
-                    </div>`).join('');
+            const summaryBox = document.getElementById('mo-summary-box');
+            const grid = document.getElementById('mo-consolidated-grid');
+            const statsEl = document.getElementById('mo-stats');
+
+            if (!appData.monthlyOrders || !appData.monthlyOrders.length) {
+                if (list) list.innerHTML = '<div class="empty-state" style="padding:14px;background:var(--surface-2);border-radius:12px;">Sin materiales en el pedido mensual. Agrega insumos arriba para comenzar.</div>';
+                if (summaryBox) summaryBox.style.display = 'none';
+                if (statsEl) statsEl.textContent = '0 insumos · 0 uds';
+                return;
             }
-            const total = appData.monthlyOrders.reduce((a, r) => a + monthlyUnits(r), 0);
-            document.getElementById('mo-total').textContent = total + ' uds';
+
+            if (list) {
+                list.innerHTML = appData.monthlyOrders.map((r, i) => `
+                    <div class="mo-card">
+                        <div class="mo-card__info">
+                            <div class="mo-card__title">${escapeHtml(r.material)}</div>
+                            <div class="mo-card__loc">📍 ${escapeHtml(r.location || 'Armario / Base')}</div>
+                        </div>
+                        <div class="mo-stepper">
+                            <button type="button" class="mo-stepper__btn" onclick="stepMonthlyQty(${i}, -1)">−</button>
+                            <input type="number" min="1" step="any" class="mo-stepper__val" value="${escapeHtml(r.quantity || '1')}" onchange="setMonthlyQty(${i}, this.value)">
+                            <button type="button" class="mo-stepper__btn" onclick="stepMonthlyQty(${i}, 1)">+</button>
+                        </div>
+                        <div class="mo-card__actions">
+                            <button type="button" class="mini mini--edit" title="Duplicar para otra ubicación" onclick="duplicateMonthlyItem(${i})">📋</button>
+                            <button type="button" class="mini mini--del" title="Eliminar" onclick="deleteMonthlyItem(${i})">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Consolidar totales por material
+            const consolidatedMap = new Map();
+            let totalUnits = 0;
+
+            appData.monthlyOrders.forEach(r => {
+                const matName = (r.material || '').trim();
+                if (!matName) return;
+                const key = matName.toLowerCase();
+                const loc = (r.location || 'Armario / Base').trim();
+                const cant = Number(monthlyUnits(r)) || 0;
+                totalUnits += cant;
+
+                if (!consolidatedMap.has(key)) {
+                    consolidatedMap.set(key, { material: matName, totalCantidad: 0, destinos: [] });
+                }
+                const entry = consolidatedMap.get(key);
+                entry.totalCantidad += cant;
+
+                const exDest = entry.destinos.find(d => d.ubicacion.toLowerCase() === loc.toLowerCase());
+                if (exDest) {
+                    exDest.cantidad += cant;
+                } else {
+                    entry.destinos.push({ ubicacion: loc, cantidad: cant });
+                }
+            });
+
+            const consolidated = Array.from(consolidatedMap.values());
+
+            if (statsEl) {
+                statsEl.textContent = `${consolidated.length} insumos · ${totalUnits} uds (${appData.monthlyOrders.length} líneas)`;
+            }
+
+            if (summaryBox && grid) {
+                summaryBox.style.display = consolidated.length > 0 ? 'block' : 'none';
+                const uniqueCountEl = document.getElementById('mo-unique-count');
+                if (uniqueCountEl) uniqueCountEl.textContent = `${consolidated.length} distintos`;
+                grid.innerHTML = consolidated.map(c => `
+                    <div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:8px 10px;font-size:12px;">
+                        <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:4px;">
+                            <span>${escapeHtml(c.material)}</span>
+                            <span style="color:var(--accent);font-weight:800;background:var(--accent-dim);padding:1px 6px;border-radius:6px;">Total: ${c.totalCantidad}</span>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-faint);">
+                            ${c.destinos.map(d => `📍 ${escapeHtml(d.ubicacion)}: <strong>${d.cantidad}</strong>`).join(' • ')}
+                        </div>
+                    </div>
+                `).join('');
+            }
         }
 
         function buildDatalists() {
-            const cats = [...new Set(appData.inventory.map(i => i.category))];
-            document.getElementById('f-categories').innerHTML = cats.map(c => `<option value="${escapeHtml(c)}">`).join('');
-            document.getElementById('mo-material-datalist').innerHTML = [...new Set(appData.inventory.map(i => i.material))].map(m => `<option value="${escapeHtml(m)}">`).join('');
+            const cats = [...new Set(appData.inventory.map(i => i.category).concat(['Armario de reposición / Almacén', 'Botiquín Circulatorio / Vía Venosa', 'Botiquín Respiratorio / Vía Aérea', 'Cajón de Curas', 'Cajón de Medicación / Ampulario', 'Cabina Asistencial']))];
+            const catOptions = cats.map(c => `<option value="${escapeHtml(c)}">`).join('');
+            const fCat = document.getElementById('f-categories');
+            if (fCat) fCat.innerHTML = catOptions;
+
+            const moLoc = document.getElementById('mo-location-datalist');
+            if (moLoc) moLoc.innerHTML = catOptions;
+
+            const allMaterials = [...new Set(appData.inventory.map(i => i.material))];
+            const matOptions = allMaterials.map(m => `<option value="${escapeHtml(m)}">`).join('');
+            const moMat = document.getElementById('mo-material-datalist');
+            if (moMat) moMat.innerHTML = matOptions;
         }
 
         function renderMeta() {
@@ -4462,13 +4585,16 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         // ---- Pedido mensual ----
         function addMonthlyItem(e) {
             e.preventDefault();
-            const material = document.getElementById('mo-form').querySelector('[name=material]').value.trim();
-            const qty = document.getElementById('mo-form').querySelector('[name=qty]').value.trim();
-            const location = document.getElementById('mo-form').querySelector('[name=location]').value.trim();
+            const form = document.getElementById('mo-form');
+            const material = form.querySelector('[name=material]').value.trim();
+            const qty = form.querySelector('[name=qty]').value.trim();
+            const location = form.querySelector('[name=location]').value.trim() || 'Armario de reposición / Almacén';
             if (!material) return;
-            appData.monthlyOrders.push({ material, quantity: qty || '', location });
+            appData.monthlyOrders.push({ material, quantity: qty || '1', location });
             saveData(); renderMonthly(); buildDatalists();
-            document.getElementById('mo-form').reset();
+            form.reset();
+            const qInp = form.querySelector('[name=qty]');
+            if (qInp) qInp.value = '1';
             toast('Añadido al pedido mensual.', 'success');
         }
         function deleteMonthlyItem(index) {
@@ -4481,9 +4607,32 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         function setMonthlyQty(index, value) {
             const v = (value || '').trim();
             if (v === '' || v.toLowerCase() === 'de cada' || /^\d+$/.test(v)) {
-                appData.monthlyOrders[index].quantity = v.toLowerCase() === 'de cada' ? 'de cada' : v;
+                appData.monthlyOrders[index].quantity = v.toLowerCase() === 'de cada' ? 'de cada' : (v || '1');
                 saveData(); renderMonthly();
             } else { renderMonthly(); }
+        }
+        function stepMonthlyQty(index, delta) {
+            if (appData.monthlyOrders && appData.monthlyOrders[index]) {
+                let curr = parseInt(appData.monthlyOrders[index].quantity, 10) || 1;
+                let next = Math.max(1, curr + delta);
+                appData.monthlyOrders[index].quantity = next;
+                saveData(); renderMonthly();
+            }
+        }
+        function duplicateMonthlyItem(index) {
+            if (appData.monthlyOrders && appData.monthlyOrders[index]) {
+                const copy = { ...appData.monthlyOrders[index] };
+                appData.monthlyOrders.splice(index + 1, 0, copy);
+                saveData(); renderMonthly();
+                toast('Línea duplicada para otra ubicación', 'info');
+            }
+        }
+        function clearMonthlyOrder() {
+            if (confirm('¿Vaciar toda la lista de pedido mensual?')) {
+                appData.monthlyOrders = [];
+                saveData(); renderMonthly();
+                toast('Pedido mensual vaciado.', 'info');
+            }
         }
         function monthlyUnits(r) {
             const v = String(r.quantity || '').trim();
@@ -5079,6 +5228,9 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.closeModal = closeModal;
         window.deleteMonthlyItem = deleteMonthlyItem;
         window.setMonthlyQty = setMonthlyQty;
+        window.stepMonthlyQty = stepMonthlyQty;
+        window.duplicateMonthlyItem = duplicateMonthlyItem;
+        window.clearMonthlyOrder = clearMonthlyOrder;
         window.toggleCategory = toggleCategory;
         window.clearSearch = clearSearch;
         window.setView = setView;
