@@ -581,6 +581,69 @@
         body.view-table .cards-view { display: none !important; }
         body.view-table .table-view { display: block !important; }
 
+        /* Barra de Pestañas / Tabs */
+        .tabbar {
+            display: flex;
+            background: var(--surface);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            margin: 0 0 16px;
+            gap: 4px;
+            box-shadow: var(--shadow-soft);
+            position: sticky;
+            top: 68px;
+            z-index: 20;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .tabbar__btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 42px;
+            border: 0;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-soft);
+            font-family: inherit;
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s ease;
+            position: relative;
+        }
+        .tabbar__btn.is-active {
+            background: var(--surface-2);
+            color: var(--text);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+        }
+        .tabbar__btn.is-active::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            width: 24px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 999px;
+        }
+        .tab-badge {
+            background: var(--primary);
+            color: #04121a;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 999px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .tab-content { display: none; }
+        .tab-content.is-active { display: block; animation: fadeIn .2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
         /* Estado vacío */
         .empty-state { text-align: center; color: var(--text-faint); padding: 28px 16px; font-weight: 600; }
 
@@ -624,100 +687,90 @@
 
     <main class="wrap">
 
-        <!-- Hero -->
-        <section class="hero">
-            <div>
-                <div class="hero__date">Hoy · <strong id="today">sábado, 15 de agosto de 2026</strong></div>
-                <div class="hero__date">Responsable: <strong id="hero-responsable">Fran/ Roberto  </strong></div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <button type="button" class="btn btn--ghost" style="height:44px;padding:0 12px;font-size:13px;border-radius:12px;font-weight:700;" onclick="openHelpModal()">❓ ¿Cómo funciona?</button>
-                <button class="hero__btn" onclick="handleExportOrderPDF()">📄 PDF Pedido</button>
-            </div>
-        </section>
-
-        <!-- Metadatos editables -->
-        <section class="meta">
-            <div class="meta__field">
-                <label class="meta__label">📅 Fecha</label>
-                <input type="date" id="meta-fecha">
-            </div>
-            <div class="meta__field">
-                <label class="meta__label">🚑 Unidad</label>
-                <input type="text" id="meta-unidad" placeholder="Ej. 1315">
-            </div>
-            <div class="meta__field">
-                <label class="meta__label">👤 Responsable</label>
-                <input type="text" id="meta-nombre" placeholder="Nombre del responsable">
-            </div>
-            <div class="meta__field">
-                <label class="meta__label">✔ Estado</label>
-                <input type="text" readonly="" value="Sincronizado" style="color:var(--ok);font-weight:700;">
-            </div>
-        </section>
-
-        <!-- Notificaciones -->
-        <div class="notice" id="notice-danger" style="display: block;">🚨 <strong>CADUCADOS:</strong> ESPARATRAPO RECORTABLE, GLUCOSA GEL</div>
-        <div class="notice" id="notice-warn" style="display: none;"></div>
-
-        <!-- KPIs -->
-        <section class="kpis">
-            <article class="kpi kpi--accent"><div class="kpi__label">📦 Materiales</div><div class="kpi__value" id="kpi-total">71 <small>items</small></div></article>
-            <article class="kpi kpi--danger"><div class="kpi__label">⛔ Caducados</div><div class="kpi__value" id="kpi-expired">2 <small>items</small></div></article>
-            <article class="kpi kpi--warn"><div class="kpi__label">⏳ Caducan ≤30d</div><div class="kpi__value" id="kpi-soon">0 <small>items</small></div></article>
-            <article class="kpi kpi--ok"><div class="kpi__label">🛒 A pedir</div><div class="kpi__value" id="kpi-order">69 <small>uds</small></div></article>
-        </section>
-
-        <!-- Búsqueda -->
-        <div class="search">
-            <span>🔍</span>
-            <input type="search" id="q" placeholder="Buscar material o categoría…">
-            <button type="button" class="search__clear" id="search-clear" title="Limpiar" onclick="clearSearch()">✕</button>
-        </div>
-
-        <!-- Filtros -->
-        <nav class="chipbar" id="chips">
-            <button class="chip is-active" data-f="all">Todos <span class="chip__count" id="c-all">71</span></button>
-            <button class="chip" data-f="expired">⛔ Caducados <span class="chip__count" id="c-expired">2</span></button>
-            <button class="chip" data-f="soon">⚠️ Próximos <span class="chip__count" id="c-soon">0</span></button>
-            <button class="chip" data-f="low">🟦 Stock bajo <span class="chip__count" id="c-low">19</span></button>
-            <button class="chip" data-f="need">🛒 Con pedido <span class="chip__count" id="c-need">20</span></button>
+        <!-- Barra de Pestañas / Navegación Principal -->
+        <nav class="tabbar" id="main-tabbar">
+            <button type="button" class="tabbar__btn is-active" data-tab="tab-inventario" onclick="switchTab('tab-inventario')">
+                <span>📋</span>
+                <span>Inventario</span>
+            </button>
+            <button type="button" class="tabbar__btn" data-tab="tab-pedidos" onclick="switchTab('tab-pedidos')">
+                <span>📦</span>
+                <span>Pedidos</span>
+                <span class="tab-badge" id="tab-pedidos-badge">0</span>
+            </button>
+            <button type="button" class="tabbar__btn" data-tab="tab-gestion" onclick="switchTab('tab-gestion')">
+                <span>⚙️</span>
+                <span>Ajustes</span>
+            </button>
         </nav>
 
-        <!-- Vista: Tarjetas / Tabla -->
-        <div class="viewtoggle" id="viewtoggle">
-            <button type="button" data-v="cards" onclick="setView('cards')">🗂 Tarjetas</button>
-            <button type="button" data-v="table" onclick="setView('table')">▦ Tabla</button>
-        </div>
+        <!-- ============================================================
+             PESTAÑA 1: INVENTARIO DIARIO & CHEQUEO DE GUARDIA
+             ============================================================ -->
+        <div id="tab-inventario" class="tab-content is-active">
 
-        <!-- Orden -->
-        <div class="sortrow">
-            <label>Ordenar</label>
-            <select id="sort-select">
-                <option value="">Por categoría</option>
-                <option value="material-asc">Material ↑</option>
-                <option value="material-desc">Material ↓</option>
-                <option value="currentStock-desc">Stock: más alto</option>
-                <option value="currentStock-asc">Stock: más bajo</option>
-                <option value="expiry-asc">Caducidad: más próxima</option>
-                <option value="order-desc">Pido: más alto</option>
-            </select>
-        </div>
+            <!-- Hero compacto -->
+            <section class="hero" style="margin-bottom:12px;">
+                <div>
+                    <div class="hero__date">Hoy · <strong id="today">sábado, 15 de agosto de 2026</strong></div>
+                    <div class="hero__date">Responsable: <strong id="hero-responsable">Fran/ Roberto  </strong> · Unidad <strong id="hero-unidad">1315</strong></div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button type="button" class="hero__btn" onclick="switchTab('tab-pedidos')">📦 Ver Pedido (<span id="btn-pedidos-count">0</span> uds)</button>
+                </div>
+            </section>
 
-        <!-- Acciones de gestión -->
-        <div class="actions">
-            <button class="act act--primary" onclick="showAddModal()"><span class="ic2">➕</span>Añadir</button>
-            <button class="act" onclick="handleExportInventoryPDF()"><span class="ic2">📄</span>PDF Inventario</button>
-            <button class="act" onclick="handleExportOrderPDF()"><span class="ic2">📋</span>PDF Pedido</button>
-            <button class="act" onclick="handleExportMonthlyOrderPDF()"><span class="ic2">📅</span>PDF Mensual</button>
-            <button class="act" onclick="exportToCSV()"><span class="ic2">📊</span>Excel / CSV</button>
-            <button class="act" onclick="backupData()"><span class="ic2">💾</span>Backup</button>
-            <button class="act" onclick="document.getElementById('restore-input').click()"><span class="ic2">📂</span>Cargar</button>
-            <button class="act" onclick="downloadApp()"><span class="ic2">📥</span>Descargar App</button>
-        </div>
+            <!-- Notificaciones -->
+            <div class="notice" id="notice-danger" style="display: block;">🚨 <strong>CADUCADOS:</strong> ESPARATRAPO RECORTABLE, GLUCOSA GEL</div>
+            <div class="notice" id="notice-warn" style="display: none;"></div>
 
-        <!-- Vista tarjetas (móvil) -->
-        <div class="cards-view" id="cards">
+            <!-- KPIs -->
+            <section class="kpis">
+                <article class="kpi kpi--accent"><div class="kpi__label">📦 Materiales</div><div class="kpi__value" id="kpi-total">71 <small>items</small></div></article>
+                <article class="kpi kpi--danger"><div class="kpi__label">⛔ Caducados</div><div class="kpi__value" id="kpi-expired">2 <small>items</small></div></article>
+                <article class="kpi kpi--warn"><div class="kpi__label">⏳ Caducan ≤30d</div><div class="kpi__value" id="kpi-soon">0 <small>items</small></div></article>
+                <article class="kpi kpi--ok"><div class="kpi__label">🛒 A pedir</div><div class="kpi__value" id="kpi-order">69 <small>uds</small></div></article>
+            </section>
+
+            <!-- Búsqueda -->
+            <div class="search">
+                <span>🔍</span>
+                <input type="search" id="q" placeholder="Buscar material o categoría…">
+                <button type="button" class="search__clear" id="search-clear" title="Limpiar" onclick="clearSearch()">✕</button>
+            </div>
+
+            <!-- Filtros -->
+            <nav class="chipbar" id="chips">
+                <button class="chip is-active" data-f="all">Todos <span class="chip__count" id="c-all">71</span></button>
+                <button class="chip" data-f="expired">⛔ Caducados <span class="chip__count" id="c-expired">2</span></button>
+                <button class="chip" data-f="soon">⚠️ Próximos <span class="chip__count" id="c-soon">0</span></button>
+                <button class="chip" data-f="low">🟦 Stock bajo <span class="chip__count" id="c-low">19</span></button>
+                <button class="chip" data-f="need">🛒 Con pedido <span class="chip__count" id="c-need">20</span></button>
+            </nav>
+
+            <!-- Vista: Tarjetas / Tabla y Orden -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                <div class="viewtoggle" id="viewtoggle">
+                    <button type="button" data-v="cards" onclick="setView('cards')">🗂 Tarjetas</button>
+                    <button type="button" data-v="table" onclick="setView('table')">▦ Tabla</button>
+                </div>
+
+                <div class="sortrow" style="margin:0;">
+                    <label>Ordenar</label>
+                    <select id="sort-select">
+                        <option value="">Por categoría</option>
+                        <option value="material-asc">Material ↑</option>
+                        <option value="material-desc">Material ↓</option>
+                        <option value="currentStock-desc">Stock: más alto</option>
+                        <option value="currentStock-asc">Stock: más bajo</option>
+                        <option value="expiry-asc">Caducidad: más próxima</option>
+                        <option value="order-desc">Pido: más alto</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Vista tarjetas (móvil) -->
+            <div class="cards-view" id="cards">
                 <section class="category is-open" data-cat="CURAS">
                     <button class="category__head" onclick="toggleCategory(this)">
                         <span class="category__icon">📦</span>
@@ -3937,7 +3990,36 @@
             </table>
         </section>
 
-        <!-- Pedido mensual mejorado -->
+        <!-- Botón rápido añadir material -->
+        <div style="margin:16px 0; text-align:center;">
+            <button type="button" class="btn btn--primary" style="height:48px;max-width:320px;margin:0 auto;box-shadow:var(--shadow-soft);" onclick="showAddModal()">
+                ➕ Añadir Nuevo Material
+            </button>
+        </div>
+
+    </div><!-- Fin #tab-inventario -->
+
+    <!-- ============================================================
+         PESTAÑA 2: CENTRO DE PEDIDOS & REPOSICIÓN
+         ============================================================ -->
+    <div id="tab-pedidos" class="tab-content">
+        
+        <!-- Bloque 1: Pedido Ambulancia (Generado del Inventario) -->
+        <section class="panel" style="margin-bottom:18px;">
+            <div class="panel__title">
+                <span class="spark">🚑</span> Pedido de Ambulancia (Guardia)
+                <span class="badge" style="margin-left:auto;background:var(--primary-dim);color:var(--primary);font-weight:800;padding:4px 8px;border-radius:8px;" id="order-tab-badge">0 uds</span>
+            </div>
+            <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
+                Materiales faltantes calculados automáticamente según el stock de cada compartimento de la ambulancia.
+            </p>
+            <div id="order-ambulance-preview" style="margin-bottom:14px;"></div>
+            <button class="hero__btn" style="width:100%;justify-content:center;height:48px;font-size:15px;" onclick="handleExportOrderPDF()">
+                📄 Generar PDF Pedido Ambulancia (Totales + Desglose)
+            </button>
+        </section>
+
+        <!-- Bloque 2: Pedido Mensual Independiente -->
         <section class="panel" id="panel-pedido-mensual">
             <div class="panel__title" style="flex-wrap:wrap; gap:10px;">
                 <span style="display:flex;align-items:center;gap:6px;"><span class="spark">📅</span> Pedido Mensual Independiente</span>
@@ -3988,15 +4070,73 @@
             </button>
         </section>
 
+    </div><!-- Fin #tab-pedidos -->
+
+    <!-- ============================================================
+         PESTAÑA 3: AJUSTES, GESTIÓN & COPIAS DE SEGURIDAD
+         ============================================================ -->
+    <div id="tab-gestion" class="tab-content">
+        
+        <!-- Metadatos de la Guardia / Unidad -->
+        <section class="panel" style="margin-bottom:18px;">
+            <div class="panel__title"><span class="spark">🚑</span> Datos de la Unidad & Guardia</div>
+            <div class="meta" style="box-shadow:none;border:none;padding:0;background:transparent;">
+                <div class="meta__field">
+                    <label class="meta__label">📅 Fecha de Revisión</label>
+                    <input type="date" id="meta-fecha">
+                </div>
+                <div class="meta__field">
+                    <label class="meta__label">🚑 Indicativo Unidad</label>
+                    <input type="text" id="meta-unidad" placeholder="Ej. 1315">
+                </div>
+                <div class="meta__field">
+                    <label class="meta__label">👤 Responsable(s)</label>
+                    <input type="text" id="meta-nombre" placeholder="Nombres de la dotación">
+                </div>
+                <div class="meta__field">
+                    <label class="meta__label">✔ Estado de Sincronización</label>
+                    <input type="text" readonly="" value="Guardado localmente" style="color:var(--ok);font-weight:700;">
+                </div>
+            </div>
+        </section>
+
+        <!-- Herramientas de Backup y Archivo -->
+        <section class="panel" style="margin-bottom:18px;">
+            <div class="panel__title"><span class="spark">💾</span> Copias de Seguridad & Exportación</div>
+            <div class="actions" style="margin-bottom:0;">
+                <button class="act" onclick="backupData()"><span class="ic2">💾</span>Backup JSON</button>
+                <button class="act" onclick="document.getElementById('restore-input').click()"><span class="ic2">📂</span>Restaurar</button>
+                <button class="act" onclick="exportToCSV()"><span class="ic2">📊</span>Excel / CSV</button>
+                <button class="act" onclick="handleExportInventoryPDF()"><span class="ic2">📄</span>PDF Inventario</button>
+                <button class="act" onclick="downloadApp()"><span class="ic2">📲</span>Descargar App</button>
+                <button class="act" onclick="openHelpModal()"><span class="ic2">❓</span>Guía de Uso</button>
+            </div>
+        </section>
+
+        <!-- Preferencias de Tema -->
+        <section class="panel">
+            <div class="panel__title"><span class="spark">🎨</span> Preferencias</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button type="button" class="btn btn--ghost" onclick="toggleTheme()" style="height:44px;font-size:14px;">
+                    🌓 Alternar Tema Claro / Oscuro
+                </button>
+                <button type="button" class="btn btn--ghost" onclick="openHelpModal()" style="height:44px;font-size:14px;">
+                    📖 Ver Guía & Leyenda
+                </button>
+            </div>
+        </section>
+
+    </div><!-- Fin #tab-gestion -->
+
     </main>
 
     <!-- ==================== DOCKBAR (móvil) ==================== -->
     <nav class="dockbar">
+        <button class="dockbar__btn dockbar__btn--primary" data-tab="tab-inventario" onclick="switchTab('tab-inventario')"><span class="ic">📋</span>Inventario</button>
         <button class="dockbar__btn" onclick="showAddModal()"><span class="ic">➕</span>Añadir</button>
-        <button class="dockbar__btn dockbar__btn--primary" onclick="handleExportOrderPDF()"><span class="ic">📄</span>Pedido PDF</button>
+        <button class="dockbar__btn" data-tab="tab-pedidos" onclick="switchTab('tab-pedidos')"><span class="ic">📦</span>Pedidos</button>
+        <button class="dockbar__btn" data-tab="tab-gestion" onclick="switchTab('tab-gestion')"><span class="ic">⚙️</span>Ajustes</button>
         <button class="dockbar__btn" onclick="openHelpModal()"><span class="ic">❓</span>Guía</button>
-        <button class="dockbar__btn" onclick="toggleTheme()"><span class="ic" id="theme-icon">🌙</span>Tema</button>
-        <button class="dockbar__btn" onclick="backupData()"><span class="ic">💾</span>Backup</button>
     </nav>
 
     <!-- Input oculto restaurar -->
@@ -4621,11 +4761,81 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             if (moMat) moMat.innerHTML = matOptions;
         }
 
+        function switchTab(tabId) {
+            // Actualizar botones de pestaña en la barra superior
+            document.querySelectorAll('#main-tabbar .tabbar__btn').forEach(btn => {
+                btn.classList.toggle('is-active', btn.dataset.tab === tabId);
+            });
+            // Actualizar botones de pestaña en la dockbar móvil
+            document.querySelectorAll('.dockbar .dockbar__btn[data-tab]').forEach(btn => {
+                btn.classList.toggle('dockbar__btn--primary', btn.dataset.tab === tabId);
+            });
+            // Mostrar contenido de la pestaña seleccionada
+            document.querySelectorAll('.tab-content').forEach(c => {
+                c.classList.toggle('is-active', c.id === tabId);
+            });
+            if (tabId === 'tab-pedidos') {
+                renderAmbulanceOrderPreview();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderAmbulanceOrderPreview() {
+            const previewEl = document.getElementById('order-ambulance-preview');
+            if (!previewEl) return;
+            const items = appData.inventory.filter(it => it.order > 0);
+            if (!items.length) {
+                previewEl.innerHTML = '<div class="empty-state" style="padding:14px;background:var(--surface-2);border-radius:12px;color:var(--ok);font-weight:700;">✅ No hay material pendiente de pedir. Stock de la ambulancia al 100%.</div>';
+                return;
+            }
+
+            // Consolidar materiales faltantes
+            const map = new Map();
+            items.forEach(it => {
+                const name = (it.material || '').trim();
+                const key = name.toLowerCase();
+                const cat = (it.category || 'General').trim();
+                const qty = Number(it.order) || 0;
+                if (!map.has(key)) map.set(key, { material: name, total: 0, destinos: [] });
+                const entry = map.get(key);
+                entry.total += qty;
+                entry.destinos.push({ ubicacion: cat, cantidad: qty });
+            });
+
+            const consolidated = Array.from(map.values());
+            previewEl.innerHTML = `
+                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:12px;">
+                    <div style="font-size:12px;font-weight:800;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;display:flex;justify-content:space-between;">
+                        <span>📋 Faltantes de Dotación (${consolidated.length} insumos · ${items.reduce((a,i)=>a+i.order,0)} uds)</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:8px;">
+                        ${consolidated.map(c => `
+                            <div style="background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;padding:8px 10px;font-size:12px;">
+                                <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:4px;">
+                                    <span>${escapeHtml(c.material)}</span>
+                                    <span style="color:var(--primary);font-weight:800;background:var(--primary-dim);padding:1px 6px;border-radius:6px;">Total: ${c.total}</span>
+                                </div>
+                                <div style="font-size:11px;color:var(--text-faint);">
+                                    ${c.destinos.map(d => `📍 ${escapeHtml(d.ubicacion)}: <strong>${d.cantidad}</strong>`).join(' • ')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
         function renderMeta() {
-            document.getElementById('meta-fecha').value = dateToISO(parseDate(appData.metadata.fecha));
-            document.getElementById('meta-unidad').value = appData.metadata.unidad || '';
-            document.getElementById('meta-nombre').value = appData.metadata.nombre || '';
-            document.getElementById('hero-responsable').textContent = appData.metadata.nombre || '—';
+            const fEl = document.getElementById('meta-fecha');
+            if (fEl) fEl.value = dateToISO(parseDate(appData.metadata.fecha));
+            const uEl = document.getElementById('meta-unidad');
+            if (uEl) uEl.value = appData.metadata.unidad || '';
+            const nEl = document.getElementById('meta-nombre');
+            if (nEl) nEl.value = appData.metadata.nombre || '';
+            const hrEl = document.getElementById('hero-responsable');
+            if (hrEl) hrEl.textContent = appData.metadata.nombre || '—';
+            const huEl = document.getElementById('hero-unidad');
+            if (huEl) huEl.textContent = appData.metadata.unidad || '1315';
         }
 
         function renderAll() {
@@ -4638,6 +4848,17 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             renderTable(groups);
             renderMonthly();
             buildDatalists();
+            renderAmbulanceOrderPreview();
+
+            // Actualizar badges de pedido
+            const needItems = appData.inventory.filter(i => i.order > 0);
+            const totalUnitsToOrder = needItems.reduce((a, i) => a + i.order, 0);
+            const badgeTop = document.getElementById('tab-pedidos-badge');
+            if (badgeTop) badgeTop.textContent = totalUnitsToOrder;
+            const btnCount = document.getElementById('btn-pedidos-count');
+            if (btnCount) btnCount.textContent = totalUnitsToOrder;
+            const orderTabBadge = document.getElementById('order-tab-badge');
+            if (orderTabBadge) orderTabBadge.textContent = totalUnitsToOrder + ' uds';
         }
 
         function toggleCategory(btn) { btn.closest('.category').classList.toggle('is-open'); }
@@ -5393,6 +5614,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.handleExportInventoryPDF = handleExportInventoryPDF;
         window.handleExportOrderPDF = handleExportOrderPDF;
         window.handleExportMonthlyOrderPDF = handleExportMonthlyOrderPDF;
+        window.switchTab = switchTab;
 
         loadData();
         setup();
