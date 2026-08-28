@@ -766,6 +766,7 @@
                     <div class="hero__date">Responsable: <strong id="hero-responsable">Fran/ Roberto  </strong> · Unidad <strong id="hero-unidad">1315</strong></div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button type="button" class="hero__btn" id="btn-quick-need" onclick="toggleQuickNeedFilter()" style="font-weight:800;background:var(--primary-dim);color:var(--primary);border:1.5px solid var(--primary);">🔍 Solo Faltantes / A Pedir</button>
                     <button type="button" class="hero__btn" onclick="switchTab('tab-pedidos')">📦 Pedidos (<span id="btn-pedidos-count">0</span> uds)</button>
                     <button type="button" class="btn btn--primary" style="height:44px;padding:0 12px;font-size:13px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg, var(--accent), var(--primary));color:#04121a;" onclick="handleDownloadCombinedOrderPDFDirect()" title="Descargar ambos pedidos (Armario + Mensual) en un único PDF">📑 PDF Conjunto</button>
                 </div>
@@ -777,10 +778,10 @@
 
             <!-- KPIs -->
             <section class="kpis">
-                <article class="kpi kpi--accent"><div class="kpi__label">📦 Materiales</div><div class="kpi__value" id="kpi-total">71 <small>items</small></div></article>
-                <article class="kpi kpi--danger"><div class="kpi__label">⛔ Caducados</div><div class="kpi__value" id="kpi-expired">2 <small>items</small></div></article>
-                <article class="kpi kpi--warn"><div class="kpi__label">⏳ Caducan ≤30d</div><div class="kpi__value" id="kpi-soon">0 <small>items</small></div></article>
-                <article class="kpi kpi--ok"><div class="kpi__label">🛒 A pedir</div><div class="kpi__value" id="kpi-order">69 <small>uds</small></div></article>
+                <article class="kpi kpi--accent" style="cursor:pointer;" title="Ver todos los materiales"><div class="kpi__label">📦 Materiales</div><div class="kpi__value" id="kpi-total">71 <small>items</small></div></article>
+                <article class="kpi kpi--danger" style="cursor:pointer;" title="Filtrar caducados"><div class="kpi__label">⛔ Caducados</div><div class="kpi__value" id="kpi-expired">2 <small>items</small></div></article>
+                <article class="kpi kpi--warn" style="cursor:pointer;" title="Filtrar próximos a caducar"><div class="kpi__label">⏳ Caducan ≤30d</div><div class="kpi__value" id="kpi-soon">0 <small>items</small></div></article>
+                <article class="kpi kpi--ok" style="cursor:pointer;" title="Filtrar materiales que faltan por pedir"><div class="kpi__label">🛒 A pedir</div><div class="kpi__value" id="kpi-order">69 <small>uds</small></div></article>
             </section>
 
             <!-- Búsqueda -->
@@ -793,10 +794,10 @@
             <!-- Filtros -->
             <nav class="chipbar" id="chips">
                 <button class="chip is-active" data-f="all">Todos <span class="chip__count" id="c-all">71</span></button>
+                <button class="chip chip--need" data-f="need" style="border:1.5px solid var(--primary);font-weight:800;">🛒 Solo Faltantes <span class="chip__count" id="c-need" style="background:var(--primary);color:#fff;">20</span></button>
                 <button class="chip" data-f="expired">⛔ Caducados <span class="chip__count" id="c-expired">2</span></button>
                 <button class="chip" data-f="soon">⚠️ Próximos <span class="chip__count" id="c-soon">0</span></button>
                 <button class="chip" data-f="low">🟦 Stock bajo <span class="chip__count" id="c-low">19</span></button>
-                <button class="chip" data-f="need">🛒 Con pedido <span class="chip__count" id="c-need">20</span></button>
             </nav>
 
             <!-- Vista: Tarjetas / Tabla y Orden -->
@@ -5081,15 +5082,52 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         }
 
         // ============================================================
-        //  ACCIONES · CRUD
+        //  VIBRACIÓN HÁPTICA TÁCTIL (Móvil)
+        // ============================================================
+        function hapticPulse() {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                try {
+                    navigator.vibrate(20);
+                } catch(e) {}
+            }
+        }
+
+        // ============================================================
+        //  ACCIONES · CRUD & FILTRADO
         // ============================================================
         function adjustStock(index, amount) {
+            hapticPulse();
             const item = appData.inventory[index];
             const next = (item.currentStock || 0) + amount;
             if (next < 0) return;
             item.currentStock = next;
             item.order = item.idealStock - item.currentStock;
             saveData(); renderAll();
+        }
+
+        function toggleQuickNeedFilter() {
+            hapticPulse();
+            setFilter(curFilter === 'need' ? 'all' : 'need');
+        }
+
+        function setFilter(f) {
+            curFilter = f || 'all';
+            document.querySelectorAll('#chips .chip').forEach(ch => {
+                ch.classList.toggle('is-active', ch.dataset.f === curFilter);
+            });
+            const quickBtn = document.getElementById('btn-quick-need');
+            if (quickBtn) {
+                if (curFilter === 'need') {
+                    quickBtn.style.background = 'var(--primary)';
+                    quickBtn.style.color = '#ffffff';
+                    quickBtn.textContent = '✅ Mostrando Solo Faltantes';
+                } else {
+                    quickBtn.style.background = 'var(--primary-dim)';
+                    quickBtn.style.color = 'var(--primary)';
+                    quickBtn.textContent = '🔍 Solo Faltantes / A Pedir';
+                }
+            }
+            renderAll();
         }
 
         function deleteItem(index) {
@@ -5194,6 +5232,7 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             } else { renderMonthly(); }
         }
         function stepMonthlyQty(index, delta) {
+            hapticPulse();
             if (appData.monthlyOrders && appData.monthlyOrders[index]) {
                 let curr = parseInt(appData.monthlyOrders[index].quantity, 10) || 1;
                 let next = Math.max(1, curr + delta);
@@ -6254,11 +6293,29 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             document.getElementById('q').addEventListener('input', debounce(renderAll, 250));
 
             document.querySelectorAll('#chips .chip').forEach(ch => ch.addEventListener('click', () => {
-                document.querySelectorAll('#chips .chip').forEach(x => x.classList.remove('is-active'));
-                ch.classList.add('is-active');
-                curFilter = ch.dataset.f;
-                renderAll();
+                hapticPulse();
+                setFilter(ch.dataset.f);
             }));
+
+            // Clic en KPIs para filtrar directamente
+            const kpiFilters = [
+                { id: 'kpi-total', f: 'all' },
+                { id: 'kpi-expired', f: 'expired' },
+                { id: 'kpi-soon', f: 'soon' },
+                { id: 'kpi-order', f: 'need' }
+            ];
+            kpiFilters.forEach(k => {
+                const el = document.getElementById(k.id);
+                if (el) {
+                    const card = el.closest('.kpi');
+                    if (card) {
+                        card.addEventListener('click', () => {
+                            hapticPulse();
+                            setFilter(k.f);
+                        });
+                    }
+                }
+            });
 
             document.getElementById('sort-select').addEventListener('change', e => {
                 const [col, dir] = e.target.value.split('-');
@@ -6305,6 +6362,8 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
         window.toggleCategory = toggleCategory;
         window.clearSearch = clearSearch;
         window.setView = setView;
+        window.setFilter = setFilter;
+        window.toggleQuickNeedFilter = toggleQuickNeedFilter;
         window.backupData = backupData;
         window.exportToCSV = exportToCSV;
         window.downloadApp = downloadApp;
