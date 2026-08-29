@@ -725,8 +725,8 @@
         <div class="topbar__brand">
             <div class="topbar__logo"><svg viewBox="0 0 24 24" width="24" height="24" fill="white" aria-hidden="true"><rect x="10" y="4" width="4" height="16" rx="1.2"/><rect x="4" y="10" width="16" height="4" rx="1.2"/></svg></div>
             <div class="topbar__titles">
-                <div class="topbar__title">Control Armario 1315</div>
-                <div class="topbar__sub"><span class="status-dot"></span> Unidad 1315 · <span id="clock">16:42</span></div>
+                <div class="topbar__title">Control Armario</div>
+                <div class="topbar__sub"><span class="status-dot"></span> Unidad <span id="topbar-unidad">1315</span> · <span id="clock">16:42</span></div>
             </div>
         </div>
         <div class="topbar__actions">
@@ -5040,6 +5040,8 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             if (hrEl) hrEl.textContent = appData.metadata.nombre || '—';
             const huEl = document.getElementById('hero-unidad');
             if (huEl) huEl.textContent = appData.metadata.unidad || '1315';
+            const tuEl = document.getElementById('topbar-unidad');
+            if (tuEl) tuEl.textContent = appData.metadata.unidad || '1315';
         }
 
         function renderAll() {
@@ -6334,11 +6336,18 @@ MATERIAL,,CANTIDAD,,UBICACION,,,,,
             }));
 
             ['meta-fecha', 'meta-unidad', 'meta-nombre'].forEach(id => {
-                document.getElementById(id).addEventListener('change', e => {
-                    appData.metadata[id.replace('meta-', '')] = e.target.value;
-                    saveData(); renderMeta();
-                    toast('Metadato actualizado.', 'info');
-                });
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', e => {
+                        appData.metadata[id.replace('meta-', '')] = e.target.value;
+                        saveData(); renderMeta();
+                    });
+                    el.addEventListener('change', e => {
+                        appData.metadata[id.replace('meta-', '')] = e.target.value;
+                        saveData(); renderMeta();
+                        toast('Metadato actualizado.', 'info');
+                    });
+                }
             });
         }
 

@@ -1,7 +1,7 @@
 {
-  "name": "Control Armario 1315",
-  "short_name": "Armario 1315",
-  "description": "Gestión de stock, caducidades y solicitudes de material sanitario para Unidad 1315",
+  "name": "Control Armario",
+  "short_name": "Control Armario",
+  "description": "Gestión de stock, caducidades y solicitudes de material sanitario para Armario",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
