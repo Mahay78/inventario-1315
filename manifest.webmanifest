@@ -1,7 +1,7 @@
 {
-  "name": "Control Armario",
-  "short_name": "Control Armario",
-  "description": "Gestión de stock, caducidades y solicitudes de material sanitario para Armario",
+  "name": "Control de Armario Pro",
+  "short_name": "Armario Pro",
+  "description": "Gestión de stock, caducidades, inventario y solicitudes de material sanitario · Control de Armario Pro",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

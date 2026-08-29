@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <title>Control Armario</title>
+    <title>Control de Armario Pro</title>
     <style>
         /* ============================================================
            TOKENS · Paleta verde sanitario + blanco
@@ -470,7 +470,7 @@
                 </svg>
             </div>
             <div class="topbar__titles">
-                <div class="topbar__title">Control Armario</div>
+                <div class="topbar__title">Control de Armario Pro</div>
                 <div class="topbar__sub"><span class="status-dot"></span> Unidad <span id="topbar-unidad">1315</span> · <span id="clock">16:00</span></div>
             </div>
         </div>
@@ -913,7 +913,7 @@
                 <button class="sheet__close" onclick="closePWAInstallModal()">✕</button>
             </div>
             <p style="font-size:13.5px;color:var(--text);margin-bottom:12px;">
-                Instala <strong>Control Armario</strong> en tu pantalla de inicio para usarla sin necesidad de internet:
+                Instala <strong>Control de Armario Pro</strong> en tu pantalla de inicio para usarla sin necesidad de internet:
             </p>
             <ul style="font-size:13px;color:var(--text-soft);padding-left:18px;margin-bottom:16px;line-height:1.6;">
                 <li><strong>En Android / Chrome:</strong> Pulsa el botón de abajo o "Añadir a pantalla de inicio" desde el menú del navegador.</li>
@@ -930,7 +930,7 @@
     <div class="overlay" id="help-overlay">
         <div class="sheet" style="max-width:580px;">
             <div class="sheet__head">
-                <div class="sheet__title">📖 Guía · Control Armario</div>
+                <div class="sheet__title">📖 Guía · Control de Armario Pro</div>
                 <button class="sheet__close" onclick="closeHelpModal()">✕</button>
             </div>
             <div style="font-size:13px;color:var(--text-soft);line-height:1.55;display:flex;flex-direction:column;gap:12px;">
@@ -1850,7 +1850,7 @@ Check list,,20,,5,,15,,sfc
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(13);
             doc.setTextColor(255, 255, 255);
-            doc.text('SOLICITUD DE MATERIAL SANITARIO · REPOSICIÓN ARMARIO', margin + 6, margin + 9);
+            doc.text('SOLICITUD DE REPOSICIÓN · CONTROL DE ARMARIO PRO', margin + 6, margin + 9);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
             doc.text('Unidad: ' + (appData.metadata.unidad || '1315') + ' • Solicitud para Almacén / Farmacia', margin + 6, margin + 16);
@@ -2025,7 +2025,7 @@ Check list,,20,,5,,15,,sfc
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(13);
             doc.setTextColor(255, 255, 255);
-            doc.text('SOLICITUD CONJUNTA DE MATERIAL SANITARIO', margin + 6, margin + 9);
+            doc.text('SOLICITUD CONJUNTA · CONTROL DE ARMARIO PRO', margin + 6, margin + 9);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
             doc.text('Reposición de Armario + Pedido Mensual • Unidad ' + (appData.metadata.unidad || '1315'), margin + 6, margin + 16);
@@ -2169,7 +2169,7 @@ Check list,,20,,5,,15,,sfc
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12.5);
             doc.setTextColor(255, 255, 255);
-            doc.text('INFORME OFICIAL DE REVISIÓN Y CONTROL DE ARMARIO', margin + 6, margin + 9);
+            doc.text('INFORME OFICIAL DE REVISIÓN · CONTROL DE ARMARIO PRO', margin + 6, margin + 9);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8.5);
@@ -2431,7 +2431,7 @@ Check list,,20,,5,,15,,sfc
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `control_armario_${appData.metadata.unidad || '1315'}.html`;
+            a.download = `control_de_armario_pro_${appData.metadata.unidad || '1315'}.html`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -2635,7 +2635,7 @@ Check list,,20,,5,,15,,sfc
             const url = getSyncUrl();
             const un = appData.metadata.unidad || '1315';
             const nom = appData.metadata.nombre || 'Dotación';
-            const msg = `🗄️ *RELEVO DE GUARDIA · CONTROL ARMARIO ${un}*\n📅 Fecha: ${appData.metadata.fecha || ''}\n👤 Responsable: ${nom}\n\n📲 Pulsa este enlace para sincronizar el stock del armario en tu teléfono:\n${url}`;
+            const msg = `🗄️ *RELEVO DE GUARDIA · CONTROL DE ARMARIO PRO ${un}*\n📅 Fecha: ${appData.metadata.fecha || ''}\n👤 Responsable: ${nom}\n\n📲 Pulsa este enlace para sincronizar el stock del armario en tu teléfono:\n${url}`;
             const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
             window.open(waUrl, '_blank');
         }
