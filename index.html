@@ -103,9 +103,21 @@
             border: 1px solid var(--border); background: var(--surface); color: var(--text);
             display: grid; place-items: center; font-size: 17px; cursor: pointer;
             transition: background .15s, transform .08s, border-color .15s;
+            position: relative;
         }
         .icon-btn:active { transform: scale(.94); background: var(--surface-3); }
         .icon-btn--accent { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); background: var(--accent-dim); }
+        .icon-btn--p2p-active { border-color: var(--ok); background: var(--ok-soft); }
+
+        .p2p-status-dot {
+            position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%;
+            pointer-events: none; transition: background .2s, box-shadow .2s;
+        }
+        .p2p-status-dot--off { background: var(--text-faint); opacity: 0.4; }
+        .p2p-status-dot--connecting { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); animation: pulseWarn 1.2s infinite; }
+        .p2p-status-dot--on { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); animation: pulseOk 2s infinite; }
+        @keyframes pulseWarn { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.25); } }
+        @keyframes pulseOk { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.3); } }
 
         /* CONTENEDOR */
         .wrap { max-width: 1120px; margin: 0 auto; padding: 18px 16px 0; }
@@ -475,6 +487,10 @@
             </div>
         </div>
         <div class="topbar__actions">
+            <button class="icon-btn" id="topbar-p2p-btn" title="Sincronización P2P en Vivo (WebRTC)" onclick="openP2PModal()">
+                <span id="p2p-icon-symbol">📡</span>
+                <span class="p2p-status-dot p2p-status-dot--off" id="p2p-status-dot"></span>
+            </button>
             <button class="icon-btn" title="¿Cómo funciona? (Guía y Ayuda)" onclick="openHelpModal()">❓</button>
             <button class="icon-btn icon-btn--accent" title="Descargar app con tus datos" onclick="downloadApp()">📲</button>
         </div>
@@ -747,14 +763,18 @@
                 </div>
             </section>
 
-            <!-- Sincronización y Relevo QR / WhatsApp -->
-            <section class="panel" style="margin-bottom:18px;">
-                <div class="panel__title"><span class="spark">🔄</span> Sincronización & Relevo de Guardia</div>
+            <!-- Sincronización P2P en Vivo (WebRTC) y Relevo -->
+            <section class="panel" style="margin-bottom:18px;border-left:4px solid var(--primary);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+                    <div class="panel__title" style="margin-bottom:0;"><span class="spark">📡</span> Sincronización P2P en Vivo (WebRTC)</div>
+                    <span class="badge" id="p2p-panel-badge" style="background:var(--surface-2);color:var(--text-faint);border:1px solid var(--border);padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;">⚫ Desconectado</span>
+                </div>
                 <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
-                    Transfiere al instante el estado del armario a otro compañero mediante código QR o enlace directo de WhatsApp.
+                    Conecta dos teléfonos en tiempo real durante la guardia. Cada cambio (+ / -) de stock se sincroniza al instante entre ambos móviles sin servidores centrales.
                 </p>
                 <div class="actions" style="margin-bottom:0;">
-                    <button class="act act--primary" onclick="openQRShareModal()"><span class="ic2">📲</span>Traspaso QR / WhatsApp</button>
+                    <button class="act act--primary" onclick="openP2PModal()"><span class="ic2">📡</span>Conectar P2P en Vivo</button>
+                    <button class="act" onclick="openQRShareModal()"><span class="ic2">📲</span>Relevo QR / WhatsApp</button>
                     <button class="act" onclick="openQRScanModal()"><span class="ic2">📷</span>Escanear QR / Cargar</button>
                     <button class="act" onclick="openPWAInstallModal()"><span class="ic2">📥</span>Instalar App (Offline)</button>
                 </div>
@@ -962,11 +982,116 @@
         </div>
     </div>
 
+    <!-- MODAL SINCRONIZACIÓN P2P EN VIVO (WebRTC) -->
+    <div class="overlay" id="p2p-modal">
+        <div class="sheet" style="max-width:520px;">
+            <div class="sheet__head">
+                <div class="sheet__title">📡 Sincronización P2P en Vivo (WebRTC)</div>
+                <button class="sheet__close" onclick="closeP2PModal()">✕</button>
+            </div>
+            
+            <!-- Vista No Conectado -->
+            <div id="p2p-unconnected-view">
+                <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
+                    Enlaza tu dispositivo con el de tu compañero en tiempo real. Cualquier cambio (+ / -) se reflejará al instante entre ambos móviles sin servidores externos.
+                </p>
+
+                <!-- Sub-pestañas P2P -->
+                <div class="viewtoggle" style="width:100%;margin-bottom:14px;display:flex;">
+                    <button type="button" class="is-active" id="p2p-tab-host" style="flex:1;" onclick="setP2PViewMode('host')">
+                        📤 Crear Sala / Emitir
+                    </button>
+                    <button type="button" id="p2p-tab-join" style="flex:1;" onclick="setP2PViewMode('join')">
+                        📥 Unirse a Compañero
+                    </button>
+                </div>
+
+                <!-- Panel Host (Crear Sala) -->
+                <div id="p2p-panel-host">
+                    <div style="text-align:center;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:16px;margin-bottom:12px;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px;">Tu Código de Conexión</div>
+                        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;">
+                            <span id="p2p-my-code" style="font-size:26px;font-weight:800;letter-spacing:2px;color:var(--primary);font-family:monospace;">Generando...</span>
+                            <button type="button" class="btn btn--ghost" style="padding:4px 10px;height:34px;font-size:12px;" onclick="copyP2PCode()" title="Copiar código">📋 Copiar</button>
+                        </div>
+                        <div style="font-size:12px;color:var(--text-soft);" id="p2p-host-status">
+                            ⏳ Esperando que tu compañero se conecte...
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:center;margin-bottom:12px;">
+                        <div id="p2p-qrcode-canvas" style="padding:10px;background:#fff;border-radius:12px;border:1px solid var(--border);"></div>
+                    </div>
+                    <div style="font-size:12px;text-align:center;color:var(--text-faint);">
+                        Tu compañero puede escanear este QR con su cámara para conectarse directamente.
+                    </div>
+                </div>
+
+                <!-- Panel Join (Unirse) -->
+                <div id="p2p-panel-join" style="display:none;">
+                    <div class="form-field" style="margin-bottom:12px;">
+                        <label>Código o ID de sala de tu compañero:</label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="p2p-join-input" placeholder="Ej: 4821 o ID completo" style="font-weight:700;font-size:16px;text-transform:uppercase;">
+                            <button type="button" class="btn btn--primary" style="white-space:nowrap;padding:0 16px;" onclick="connectP2PFromInput()">
+                                ⚡ Conectar
+                            </button>
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button type="button" class="btn btn--ghost" id="btn-p2p-scan" onclick="toggleP2PQRScan()" style="height:44px;">
+                            📷 Escanear QR del Compañero
+                        </button>
+                    </div>
+                    <!-- Área de cámara para escanear P2P -->
+                    <div id="p2p-camera-box" style="display:none;position:relative;width:100%;height:200px;background:#000;border-radius:12px;overflow:hidden;margin-top:12px;">
+                        <video id="p2p-video" style="width:100%;height:100%;object-fit:cover;"></video>
+                        <canvas id="p2p-canvas-hidden" style="display:none;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista Conectada (P2P Activo) -->
+            <div id="p2p-connected-view" style="display:none;">
+                <div style="background:var(--ok-soft);border:1px solid color-mix(in srgb, var(--ok) 30%, transparent);border-radius:14px;padding:14px;margin-bottom:14px;text-align:center;">
+                    <div style="font-size:17px;font-weight:800;color:var(--ok);margin-bottom:4px;">🟢 Conexión P2P en Vivo Activa</div>
+                    <div style="font-size:13px;color:var(--text-soft);" id="p2p-peer-info">
+                        Enlazado con dispositivo compañero
+                    </div>
+                </div>
+
+                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:12px;padding:12px;margin-bottom:14px;">
+                    <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:13.5px;font-weight:600;">
+                        <span>🔄 Sincronización automática de cada toque</span>
+                        <input type="checkbox" id="p2p-auto-sync-check" checked onchange="toggleP2PAutoSync(this.checked)" style="width:20px;height:20px;accent-color:var(--primary);">
+                    </label>
+                    <p style="font-size:11.5px;color:var(--text-faint);margin-top:6px;margin-bottom:0;">
+                        Cada vez que pulses (+ / -) en un material, el cambio se reflejará al instante en el móvil de tu pareja.
+                    </p>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+                    <button type="button" class="btn btn--primary" onclick="sendFullP2PSync()">
+                        ⚡ Transmitir mi Inventario Completo
+                    </button>
+                    <button type="button" class="btn btn--ghost" onclick="requestFullP2PSync()">
+                        📥 Solicitar Inventario Actual del Compañero
+                    </button>
+                    <button type="button" class="btn btn--danger" onclick="disconnectP2P()" style="background:var(--danger-soft);color:var(--danger);border-color:var(--danger-soft);">
+                        🛑 Desconectar Sala P2P
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
     <!-- Librerías JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" integrity="sha384-QQBwnzmpf8eCm7WvgJ/dpvJ51cajsTkfDMgOq5QVBZav9687X5xjlZo8zroLyU3+" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
     <script>
         // ============================================================
@@ -1590,6 +1715,13 @@ Check list,,20,,5,,15,,sfc
             item.order = Math.max(0, item.idealStock - item.currentStock);
             saveData();
             renderAll();
+            if (typeof broadcastP2PUpdate === 'function') {
+                broadcastP2PUpdate('DELTA_STOCK', {
+                    index,
+                    currentStock: item.currentStock,
+                    order: item.order
+                });
+            }
         }
 
         function toggleCategory(btn) {
@@ -1640,6 +1772,9 @@ Check list,,20,,5,,15,,sfc
                 appData.inventory.splice(index, 1);
                 saveData();
                 renderAll();
+                if (typeof broadcastP2PUpdate === 'function') {
+                    broadcastP2PUpdate('FULL_SYNC', { appData });
+                }
                 toast('Material eliminado.', true);
             }
         }
@@ -1710,6 +1845,9 @@ Check list,,20,,5,,15,,sfc
             }
             saveData();
             renderAll();
+            if (typeof broadcastP2PUpdate === 'function') {
+                broadcastP2PUpdate('FULL_SYNC', { appData });
+            }
             closeModal();
         }
 
@@ -1729,6 +1867,9 @@ Check list,,20,,5,,15,,sfc
             appData.monthlyOrders.push({ material, location, quantity: qty });
             saveData();
             renderAll();
+            if (typeof broadcastP2PUpdate === 'function') {
+                broadcastP2PUpdate('MONTHLY_UPDATE', { monthlyOrders: appData.monthlyOrders });
+            }
             form.reset();
             form.qty.value = 1;
             toast('Línea añadida al pedido mensual.', true);
@@ -1745,6 +1886,9 @@ Check list,,20,,5,,15,,sfc
             }
             saveData();
             renderAll();
+            if (typeof broadcastP2PUpdate === 'function') {
+                broadcastP2PUpdate('MONTHLY_UPDATE', { monthlyOrders: appData.monthlyOrders });
+            }
         }
 
         function deleteMonthlyItem(idx) {
@@ -1753,6 +1897,9 @@ Check list,,20,,5,,15,,sfc
             appData.monthlyOrders.splice(idx, 1);
             saveData();
             renderAll();
+            if (typeof broadcastP2PUpdate === 'function') {
+                broadcastP2PUpdate('MONTHLY_UPDATE', { monthlyOrders: appData.monthlyOrders });
+            }
             toast('Línea eliminada.', true);
         }
 
@@ -1763,6 +1910,9 @@ Check list,,20,,5,,15,,sfc
                 appData.monthlyOrders = [];
                 saveData();
                 renderAll();
+                if (typeof broadcastP2PUpdate === 'function') {
+                    broadcastP2PUpdate('MONTHLY_UPDATE', { monthlyOrders: appData.monthlyOrders });
+                }
                 toast('Pedido mensual limpiado.', true);
             }
         }
@@ -1790,6 +1940,9 @@ Check list,,20,,5,,15,,sfc
                         appData.monthlyOrders = JSON.parse(JSON.stringify(tpl));
                         saveData();
                         renderAll();
+                        if (typeof broadcastP2PUpdate === 'function') {
+                            broadcastP2PUpdate('MONTHLY_UPDATE', { monthlyOrders: appData.monthlyOrders });
+                        }
                         toast('📋 Plantilla mensual cargada con éxito.', true);
                     }
                 }
@@ -2787,6 +2940,548 @@ Check list,,20,,5,,15,,sfc
         }
 
         // ============================================================
+        //  SINCRONIZACIÓN P2P EN VIVO (WebRTC) · Mejora Conectividad
+        // ============================================================
+        let p2pPeer = null;
+        let p2pConn = null;
+        let p2pMyId = '';
+        let p2pShortCode = '';
+        let p2pConnected = false;
+        let p2pAutoSync = true;
+        let isRemoteUpdate = false;
+        let p2pViewMode = 'host';
+        let p2pQRScanActive = false;
+        let p2pVideoTrack = null;
+
+        function getFullPeerId(code) {
+            const u = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9]/g, '');
+            return `armario-${u}-${code}`;
+        }
+
+        function generateP2PShortCode() {
+            return Math.floor(1000 + Math.random() * 9000).toString();
+        }
+
+        function updateP2PStatusUI(state, extraText = '') {
+            const dot = document.getElementById('p2p-status-dot');
+            const topBtn = document.getElementById('topbar-p2p-btn');
+            const panelBadge = document.getElementById('p2p-panel-badge');
+            const unconnView = document.getElementById('p2p-unconnected-view');
+            const connView = document.getElementById('p2p-connected-view');
+            const peerInfo = document.getElementById('p2p-peer-info');
+
+            if (dot) {
+                dot.className = 'p2p-status-dot ' + (
+                    state === 'connected' ? 'p2p-status-dot--on' :
+                    state === 'connecting' ? 'p2p-status-dot--connecting' :
+                    'p2p-status-dot--off'
+                );
+            }
+
+            if (topBtn) {
+                topBtn.classList.toggle('icon-btn--p2p-active', state === 'connected');
+            }
+
+            if (panelBadge) {
+                if (state === 'connected') {
+                    panelBadge.style.background = 'var(--ok-soft)';
+                    panelBadge.style.color = 'var(--ok)';
+                    panelBadge.style.borderColor = 'var(--ok)';
+                    panelBadge.textContent = '🟢 En Directo (P2P)';
+                } else if (state === 'connecting') {
+                    panelBadge.style.background = 'var(--warn-soft)';
+                    panelBadge.style.color = 'var(--warn)';
+                    panelBadge.style.borderColor = 'var(--warn)';
+                    panelBadge.textContent = '🟡 Conectando...';
+                } else {
+                    panelBadge.style.background = 'var(--surface-2)';
+                    panelBadge.style.color = 'var(--text-faint)';
+                    panelBadge.style.borderColor = 'var(--border)';
+                    panelBadge.textContent = '⚫ Desconectado';
+                }
+            }
+
+            if (unconnView && connView) {
+                if (state === 'connected') {
+                    unconnView.style.display = 'none';
+                    connView.style.display = 'block';
+                    if (peerInfo && extraText) peerInfo.textContent = extraText;
+                } else {
+                    unconnView.style.display = 'block';
+                    connView.style.display = 'none';
+                }
+            }
+        }
+
+        function setP2PViewMode(mode) {
+            p2pViewMode = mode;
+            const tabHost = document.getElementById('p2p-tab-host');
+            const tabJoin = document.getElementById('p2p-tab-join');
+            const panelHost = document.getElementById('p2p-panel-host');
+            const panelJoin = document.getElementById('p2p-panel-join');
+
+            if (tabHost && tabJoin && panelHost && panelJoin) {
+                if (mode === 'host') {
+                    tabHost.classList.add('is-active');
+                    tabJoin.classList.remove('is-active');
+                    panelHost.style.display = 'block';
+                    panelJoin.style.display = 'none';
+                    stopP2PQRScan();
+                    startP2PHost();
+                } else {
+                    tabJoin.classList.add('is-active');
+                    tabHost.classList.remove('is-active');
+                    panelHost.style.display = 'none';
+                    panelJoin.style.display = 'block';
+                }
+            }
+        }
+
+        function openP2PModal() {
+            const modal = document.getElementById('p2p-modal');
+            if (modal) modal.classList.add('is-open');
+            if (!p2pConnected) {
+                setP2PViewMode(p2pViewMode || 'host');
+                if (p2pViewMode === 'host') startP2PHost();
+            } else {
+                updateP2PStatusUI('connected');
+            }
+        }
+
+        function closeP2PModal() {
+            stopP2PQRScan();
+            const modal = document.getElementById('p2p-modal');
+            if (modal) modal.classList.remove('is-open');
+        }
+
+        function renderP2PHostUI() {
+            const codeEl = document.getElementById('p2p-my-code');
+            const statusEl = document.getElementById('p2p-host-status');
+            const qrcEl = document.getElementById('p2p-qrcode-canvas');
+
+            if (codeEl) codeEl.textContent = p2pShortCode;
+            if (statusEl) statusEl.textContent = '⏳ Esperando que tu compañero se conecte...';
+
+            if (qrcEl) {
+                qrcEl.innerHTML = '';
+                const baseUrl = window.location.href.split('#')[0];
+                const p2pUrl = `${baseUrl}#p2p=${p2pMyId}`;
+
+                let generated = false;
+                try {
+                    if (window.QRCode) {
+                        new QRCode(qrcEl, {
+                            text: p2pUrl,
+                            width: 170,
+                            height: 170,
+                            colorDark: '#04121a',
+                            colorLight: '#ffffff',
+                            correctLevel: QRCode.CorrectLevel.M
+                        });
+                        generated = true;
+                    }
+                } catch(e) {}
+
+                if (!generated || !qrcEl.hasChildNodes()) {
+                    const img = document.createElement('img');
+                    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=170x170&margin=4&data=${encodeURIComponent(p2pUrl)}`;
+                    img.alt = 'QR Emparejamiento P2P';
+                    img.style.width = '170px';
+                    img.style.height = '170px';
+                    img.style.borderRadius = '8px';
+                    qrcEl.appendChild(img);
+                }
+            }
+        }
+
+        function startP2PHost(forceNew = false) {
+            if (p2pPeer && !p2pPeer.destroyed && !forceNew && p2pMyId) {
+                renderP2PHostUI();
+                return;
+            }
+            if (typeof Peer === 'undefined') {
+                toast('Cargando soporte WebRTC P2P...', false);
+                return;
+            }
+
+            p2pShortCode = generateP2PShortCode();
+            p2pMyId = getFullPeerId(p2pShortCode);
+
+            updateP2PStatusUI('connecting');
+            try {
+                if (p2pPeer && !p2pPeer.destroyed) {
+                    p2pPeer.destroy();
+                }
+
+                p2pPeer = new Peer(p2pMyId, {
+                    debug: 1,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' }
+                        ]
+                    }
+                });
+
+                p2pPeer.on('open', (id) => {
+                    p2pMyId = id;
+                    renderP2PHostUI();
+                });
+
+                p2pPeer.on('connection', (conn) => {
+                    setupP2PConnection(conn, 'host');
+                });
+
+                p2pPeer.on('error', (err) => {
+                    console.warn("PeerJS error:", err);
+                    if (err.type === 'unavailable-id') {
+                        p2pShortCode = generateP2PShortCode();
+                        p2pMyId = getFullPeerId(p2pShortCode);
+                        startP2PHost(true);
+                    } else if (err.type === 'peer-unavailable') {
+                        toast('No se encontró al compañero. Verifica el código.', false);
+                        updateP2PStatusUI('off');
+                    } else {
+                        toast(`Aviso P2P: ${err.message || err.type}`, false);
+                    }
+                });
+
+                p2pPeer.on('disconnected', () => {
+                    if (p2pPeer && !p2pPeer.destroyed) {
+                        try { p2pPeer.reconnect(); } catch(e) {}
+                    }
+                });
+            } catch(e) {
+                console.error("Error iniciando PeerJS:", e);
+                updateP2PStatusUI('off');
+            }
+        }
+
+        function copyP2PCode() {
+            const textToCopy = p2pShortCode || p2pMyId;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    toast('📋 Código P2P copiado al portapapeles.', false);
+                }).catch(() => fallbackCopy(textToCopy));
+            } else {
+                fallbackCopy(textToCopy);
+            }
+        }
+
+        function connectP2PFromInput() {
+            const input = document.getElementById('p2p-join-input');
+            const val = input ? input.value.trim() : '';
+            if (!val) {
+                toast('Introduce el código de 4 dígitos o ID de sala.', false);
+                return;
+            }
+            connectToP2PPeer(val);
+        }
+
+        function connectToP2PPeer(rawTarget) {
+            let targetId = rawTarget.trim();
+            if (targetId.includes('#p2p=')) {
+                targetId = targetId.split('#p2p=')[1];
+            }
+            if (/^\d{4}$/.test(targetId)) {
+                targetId = getFullPeerId(targetId);
+            }
+
+            if (typeof Peer === 'undefined') {
+                toast('Librería WebRTC P2P no disponible.', false);
+                return;
+            }
+
+            updateP2PStatusUI('connecting');
+            toast('Conectando P2P con compañero...', false);
+
+            if (!p2pPeer || p2pPeer.destroyed) {
+                p2pPeer = new Peer({
+                    debug: 1,
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' }
+                        ]
+                    }
+                });
+                p2pPeer.on('open', () => {
+                    const conn = p2pPeer.connect(targetId, { reliable: true });
+                    setupP2PConnection(conn, 'client');
+                });
+                p2pPeer.on('error', (err) => {
+                    toast(`Error de conexión P2P: ${err.type || 'Fallo'}`, false);
+                    updateP2PStatusUI('off');
+                });
+            } else {
+                const conn = p2pPeer.connect(targetId, { reliable: true });
+                setupP2PConnection(conn, 'client');
+            }
+        }
+
+        function setupP2PConnection(conn, role) {
+            p2pConn = conn;
+
+            conn.on('open', () => {
+                p2pConnected = true;
+                stopP2PQRScan();
+                const un = appData.metadata.unidad || '1315';
+                const nom = appData.metadata.nombre || 'Dotación';
+                
+                // Enviar Handshake
+                conn.send({
+                    type: 'HANDSHAKE',
+                    unidad: un,
+                    nombre: nom,
+                    timestamp: Date.now()
+                });
+
+                updateP2PStatusUI('connected', `Enlazado con dispositivo compañero (Unidad ${un})`);
+                hapticPulse();
+                toast('🟢 ¡Conectado vía WebRTC P2P con tu compañero!', false);
+
+                // Si nos conectamos como cliente, pedimos sincronización inicial
+                if (role === 'client') {
+                    setTimeout(() => requestFullP2PSync(), 300);
+                }
+            });
+
+            conn.on('data', (data) => {
+                handleP2PData(data);
+            });
+
+            conn.on('close', () => {
+                p2pConnected = false;
+                p2pConn = null;
+                updateP2PStatusUI('off');
+                toast('⚠️ Conexión P2P cerrada por el compañero.', false);
+            });
+
+            conn.on('error', (err) => {
+                console.warn("P2P Conn error:", err);
+                toast('Error en canal P2P.', false);
+                p2pConnected = false;
+                updateP2PStatusUI('off');
+            });
+        }
+
+        function handleP2PData(data) {
+            if (!data || !data.type) return;
+
+            if (data.type === 'HANDSHAKE') {
+                const peerDesc = `Enlazado con ${data.nombre || 'Compañero'} (Unidad ${data.unidad || '1315'})`;
+                updateP2PStatusUI('connected', peerDesc);
+                hapticPulse();
+                return;
+            }
+
+            if (data.type === 'DELTA_STOCK') {
+                if (data.index !== undefined && appData.inventory[data.index]) {
+                    isRemoteUpdate = true;
+                    appData.inventory[data.index].currentStock = data.currentStock;
+                    appData.inventory[data.index].order = data.order;
+                    saveData();
+                    renderAll();
+                    isRemoteUpdate = false;
+                    hapticPulse();
+                    toast(`🔄 ${appData.inventory[data.index].material}: ${data.currentStock} uds (${data.sender || 'Pareja'})`, false);
+                }
+                return;
+            }
+
+            if (data.type === 'ITEM_EDIT') {
+                isRemoteUpdate = true;
+                if (data.index >= 0 && appData.inventory[data.index]) {
+                    appData.inventory[data.index] = data.item;
+                } else if (data.item) {
+                    appData.inventory.push(data.item);
+                }
+                saveData();
+                renderAll();
+                isRemoteUpdate = false;
+                toast(`✏️ Insumo actualizado por ${data.sender || 'compañero'}: ${data.item?.material || ''}`, false);
+                return;
+            }
+
+            if (data.type === 'MONTHLY_UPDATE') {
+                isRemoteUpdate = true;
+                appData.monthlyOrders = data.monthlyOrders || [];
+                saveData();
+                renderAll();
+                isRemoteUpdate = false;
+                toast(`🔄 Pedido mensual actualizado por ${data.sender || 'compañero'}`, false);
+                return;
+            }
+
+            if (data.type === 'FULL_SYNC') {
+                if (data.appData && Array.isArray(data.appData.inventory)) {
+                    isRemoteUpdate = true;
+                    recordSnapshot();
+                    appData = data.appData;
+                    saveData();
+                    renderAll();
+                    isRemoteUpdate = false;
+                    hapticPulse();
+                    toast(`⚡ Inventario completo recibido de ${data.sender || 'compañero'}.`, false);
+                }
+                return;
+            }
+
+            if (data.type === 'REQUEST_FULL_SYNC') {
+                sendFullP2PSync(true);
+                return;
+            }
+        }
+
+        function broadcastP2PUpdate(type, payload = {}) {
+            if (!p2pConnected || !p2pConn || !p2pAutoSync || isRemoteUpdate) return;
+            try {
+                p2pConn.send({
+                    type,
+                    ...payload,
+                    sender: appData.metadata.nombre || 'Pareja',
+                    timestamp: Date.now()
+                });
+            } catch(e) {
+                console.warn("Error al emitir por WebRTC P2P:", e);
+            }
+        }
+
+        function sendFullP2PSync(isSilent = false) {
+            if (!p2pConnected || !p2pConn) {
+                toast('No hay conexión P2P activa.', false);
+                return;
+            }
+            try {
+                p2pConn.send({
+                    type: 'FULL_SYNC',
+                    appData,
+                    sender: appData.metadata.nombre || 'Pareja',
+                    timestamp: Date.now()
+                });
+                if (!isSilent) toast('⚡ Inventario completo transmitido al compañero.', false);
+            } catch(e) {
+                toast('Error al transmitir datos.', false);
+            }
+        }
+
+        function requestFullP2PSync() {
+            if (!p2pConnected || !p2pConn) {
+                toast('No hay conexión P2P activa.', false);
+                return;
+            }
+            try {
+                p2pConn.send({ type: 'REQUEST_FULL_SYNC' });
+                toast('📥 Solicitando inventario al compañero...', false);
+            } catch(e) {
+                toast('Error al solicitar datos.', false);
+            }
+        }
+
+        function disconnectP2P() {
+            if (p2pConn) {
+                try { p2pConn.close(); } catch(e) {}
+                p2pConn = null;
+            }
+            if (p2pPeer && !p2pPeer.destroyed) {
+                try { p2pPeer.destroy(); } catch(e) {}
+                p2pPeer = null;
+            }
+            p2pConnected = false;
+            stopP2PQRScan();
+            updateP2PStatusUI('off');
+            toast('Conexión P2P finalizada.', false);
+        }
+
+        function toggleP2PAutoSync(val) {
+            p2pAutoSync = !!val;
+            toast(p2pAutoSync ? '🔄 Auto-sincronización en vivo ACTIVADA' : '⏸️ Auto-sincronización en vivo PAUSADA', false);
+        }
+
+        async function toggleP2PQRScan() {
+            if (p2pQRScanActive) stopP2PQRScan();
+            else await startP2PQRScan();
+        }
+
+        async function startP2PQRScan() {
+            const video = document.getElementById('p2p-video');
+            const box = document.getElementById('p2p-camera-box');
+            const btn = document.getElementById('btn-p2p-scan');
+            if (!video) return;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                video.srcObject = stream;
+                video.setAttribute('playsinline', true);
+                await video.play();
+                if (box) box.style.display = 'block';
+                if (btn) btn.textContent = '🛑 Detener Cámara';
+                p2pVideoTrack = stream.getVideoTracks()[0];
+                p2pQRScanActive = true;
+                requestAnimationFrame(scanP2PQR);
+            } catch(e) {
+                toast('No se pudo acceder a la cámara. Introduce el código.', false);
+            }
+        }
+
+        function stopP2PQRScan() {
+            p2pQRScanActive = false;
+            if (p2pVideoTrack) {
+                p2pVideoTrack.stop();
+                p2pVideoTrack = null;
+            }
+            const video = document.getElementById('p2p-video');
+            if (video) video.srcObject = null;
+            const box = document.getElementById('p2p-camera-box');
+            if (box) box.style.display = 'none';
+            const btn = document.getElementById('btn-p2p-scan');
+            if (btn) btn.textContent = '📷 Escanear QR del Compañero';
+        }
+
+        function scanP2PQR() {
+            if (!p2pQRScanActive) return;
+            const video = document.getElementById('p2p-video');
+            const canvas = document.getElementById('p2p-canvas-hidden');
+            if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+                if (canvas) {
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                    if (window.jsQR) {
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: 'dontInvert'
+                        });
+                        if (code && code.data) {
+                            stopP2PQRScan();
+                            connectToP2PPeer(code.data);
+                            return;
+                        }
+                    }
+                }
+            }
+            if (p2pQRScanActive) requestAnimationFrame(scanP2PQR);
+        }
+
+        function checkUrlP2P() {
+            if (window.location.hash && window.location.hash.startsWith('#p2p=')) {
+                const target = window.location.hash.replace('#p2p=', '');
+                setTimeout(() => {
+                    openP2PModal();
+                    setP2PViewMode('join');
+                    connectToP2PPeer(target);
+                    try {
+                        history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                    } catch(e) {}
+                }, 600);
+            }
+        }
+
+        // ============================================================
         //  PWA & MODALES AUXILIARES
         // ============================================================
         let deferredPrompt = null;
@@ -2934,6 +3629,16 @@ Check list,,20,,5,,15,,sfc
         window.closePWAInstallModal = closePWAInstallModal;
         window.triggerPWAInstall = triggerPWAInstall;
         window.toggleTheme = toggleTheme;
+        window.openP2PModal = openP2PModal;
+        window.closeP2PModal = closeP2PModal;
+        window.setP2PViewMode = setP2PViewMode;
+        window.copyP2PCode = copyP2PCode;
+        window.connectP2PFromInput = connectP2PFromInput;
+        window.toggleP2PQRScan = toggleP2PQRScan;
+        window.toggleP2PAutoSync = toggleP2PAutoSync;
+        window.sendFullP2PSync = sendFullP2PSync;
+        window.requestFullP2PSync = requestFullP2PSync;
+        window.disconnectP2P = disconnectP2P;
 
         // Arranque
         loadData();
@@ -2943,6 +3648,7 @@ Check list,,20,,5,,15,,sfc
         tick();
         setInterval(tick, 1000);
         checkUrlSync();
+        checkUrlP2P();
         initPWAInstall();
 
         if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
