@@ -946,38 +946,86 @@
         </div>
     </div>
 
-    <!-- MODAL GUÍA DE USO -->
+    <!-- MODAL GUÍA DE USO Y LEYENDA -->
     <div class="overlay" id="help-overlay">
-        <div class="sheet" style="max-width:580px;">
-            <div class="sheet__head">
-                <div class="sheet__title">📖 Guía · Control de Armario Pro</div>
+        <div class="sheet" style="max-width:620px;max-height:88vh;display:flex;flex-direction:column;">
+            <div class="sheet__head" style="flex:0 0 auto;">
+                <div class="sheet__title">📖 Guía & Leyenda · Control de Armario Pro</div>
                 <button class="sheet__close" onclick="closeHelpModal()">✕</button>
             </div>
-            <div style="font-size:13px;color:var(--text-soft);line-height:1.55;display:flex;flex-direction:column;gap:12px;">
+            <div style="font-size:13px;color:var(--text-soft);line-height:1.6;display:flex;flex-direction:column;gap:14px;overflow-y:auto;padding-right:4px;">
                 
-                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:12px;padding:12px;">
-                    <div style="font-weight:800;color:var(--text);margin-bottom:6px;">🎨 Leyenda de Estados & Caducidades</div>
-                    <ul style="padding-left:16px;margin:0;display:flex;flex-direction:column;gap:4px;">
-                        <li><strong style="color:var(--danger);">⛔ Caducado:</strong> Fecha vencida (muestra días de retraso).</li>
-                        <li><strong style="color:var(--warn);">⏳ Caduca pronto:</strong> Vence en ≤30 días (muestra cuenta atrás exacta).</li>
-                        <li><strong style="color:var(--primary);">🟦 Stock bajo:</strong> Stock actual inferior al ideal (Tengo &lt; Tener).</li>
-                        <li><strong style="color:var(--ok);">✅ OK:</strong> Stock completo y fecha correcta.</li>
+                <!-- 1. Leyenda de Estados y Caducidades -->
+                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:14px;">
+                    <div style="font-weight:800;color:var(--text);font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <span>🎨</span> Leyenda de Estados y Semáforo de Caducidades
+                    </div>
+                    <ul style="padding-left:18px;margin:0;display:flex;flex-direction:column;gap:6px;">
+                        <li><strong style="color:var(--danger);">⛔ Caducado:</strong> Material vencido con cálculo exacto de días de retraso. Prioridad de retirada.</li>
+                        <li><strong style="color:var(--warn);">⏳ Caduca pronto:</strong> Vencimiento en ≤30 días con cuenta regresiva precisa para planificar la reposición.</li>
+                        <li><strong style="color:var(--primary);">🟦 Stock bajo / A pedir:</strong> Cantidad actual inferior a la dotación ideal (<em>Tengo &lt; Tener</em>). Se calcula automáticamente la cantidad a solicitar.</li>
+                        <li><strong style="color:var(--ok);">✅ Conforme (OK):</strong> Dotación completa y caducidad en regla.</li>
+                        <li><strong style="color:var(--text-faint);">🏷️ SFC:</strong> Material fungible no perecedero (<em>Sin Fecha de Caducidad</em>).</li>
                     </ul>
                 </div>
 
-                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:12px;padding:12px;">
-                    <div style="font-weight:800;color:var(--text);margin-bottom:6px;">⚡ Truco de Ergonomía Táctil</div>
-                    <p>Mantén presionado el botón <strong>+</strong> o <strong>−</strong> para sumar o restar rápidamente cantidades grandes (como gasas o guantes) sin pulsar repetidamente.</p>
+                <!-- 2. Sincronización P2P en Vivo (WebRTC) -->
+                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:14px;">
+                    <div style="font-weight:800;color:var(--text);font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <span>📡</span> Sincronización P2P en Vivo (WebRTC)
+                    </div>
+                    <p style="margin-bottom:6px;">
+                        Conecta dos dispositivos en tiempo real durante la guardia sin necesidad de servidores externos:
+                    </p>
+                    <ul style="padding-left:18px;margin:0;display:flex;flex-direction:column;gap:4px;">
+                        <li>Pulsa el botón <strong>📡</strong> en la barra superior o en <strong>Ajustes</strong>.</li>
+                        <li><strong>Anfitrión:</strong> Crea la sala y comparte tu código de 4 dígitos o muestra el código QR.</li>
+                        <li><strong>Compañero:</strong> Escribe el código o escanea el QR con la cámara para enlazaros al instante.</li>
+                        <li><strong>Bilateral:</strong> Cualquier toque (+ / −) en un móvil se refleja en directo en el otro dispositivo.</li>
+                    </ul>
                 </div>
 
-                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:12px;padding:12px;">
-                    <div style="font-weight:800;color:var(--text);margin-bottom:6px;">📦 Pedidos y Plantillas Mensuales</div>
-                    <p>En la pestaña <strong>Pedidos</strong> dispones del pedido de armario, pedido mensual con soporte para guardar/cargar plantillas recurrentes, y el **PDF Conjunto** consolidado.</p>
+                <!-- 3. Ergonomía & Conteo Rápido -->
+                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:14px;">
+                    <div style="font-weight:800;color:var(--text);font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <span>⚡</span> Ergonomía Táctil y Conteo Rápido
+                    </div>
+                    <ul style="padding-left:18px;margin:0;display:flex;flex-direction:column;gap:5px;">
+                        <li><strong>Pulsación Prolongada:</strong> Mantén pulsado el botón <strong>+</strong> o <strong>−</strong> para sumar o restar rápidamente cantidades altas con aceleración progresiva.</li>
+                        <li><strong>Vibración Háptica:</strong> Respuesta táctil en el móvil para confirmar cada conteo.</li>
+                        <li><strong>↩️ Deshacer (Undo):</strong> Tras realizar cambios o borrados accidentales, pulsa "Deshacer" en el aviso flotante para restaurar el valor previo.</li>
+                        <li><strong>🔍 Solo Faltantes:</strong> Botón de acceso rápido para filtrar al instante únicamente los insumos con stock pendiente.</li>
+                    </ul>
+                </div>
+
+                <!-- 4. Informes Oficiales & Pedidos PDF -->
+                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:14px;">
+                    <div style="font-weight:800;color:var(--text);font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <span>📋</span> Informes Oficiales y Generación de PDFs
+                    </div>
+                    <ul style="padding-left:18px;margin:0;display:flex;flex-direction:column;gap:5px;">
+                        <li><strong>📋 PDF Informe Inventario (Jefatura):</strong> Documento oficial independiente de pedidos con ficha técnica, indicativo dinámico, tabla de conformidad y bloque para firmas de dotación y supervisión.</li>
+                        <li><strong>🗄️ PDF Pedido Armario:</strong> Resumen oficial para farmacia/almacén con las unidades faltantes.</li>
+                        <li><strong>📅 PDF Mensual & Plantillas:</strong> Gestión de insumos periódicos con opción de <em>Guardar y Cargar Plantillas</em> recurrentes.</li>
+                        <li><strong>📑 PDF Conjunto:</strong> Documento unificado de alta fidelidad que consolida en un único informe ambos pedidos.</li>
+                    </ul>
+                </div>
+
+                <!-- 5. Offline PWA & Seguridad -->
+                <div style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:14px;">
+                    <div style="font-weight:800;color:var(--text);font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <span>💾</span> PWA 100% Offline & Copias de Seguridad
+                    </div>
+                    <ul style="padding-left:18px;margin:0;display:flex;flex-direction:column;gap:4px;">
+                        <li><strong>App Offline:</strong> Instala la app en la pantalla de inicio para utilizarla en garajes o zonas sin cobertura.</li>
+                        <li><strong>Relevo QR / WhatsApp:</strong> Traspaso estático del estado completo para cambio de turno.</li>
+                        <li><strong>Backups JSON / CSV:</strong> Exporta copias de seguridad locales y archivos compatibles con Excel.</li>
+                    </ul>
                 </div>
 
             </div>
-            <div class="sheet__actions" style="margin-top:14px;">
-                <button type="button" class="btn btn--primary" onclick="closeHelpModal()" style="width:100%;">¡Entendido!</button>
+            <div class="sheet__actions" style="margin-top:14px;flex:0 0 auto;">
+                <button type="button" class="btn btn--primary" onclick="closeHelpModal()" style="width:100%;height:44px;font-weight:700;">¡Entendido!</button>
             </div>
         </div>
     </div>
