@@ -517,8 +517,8 @@
                     <button type="button" class="hero__btn" onclick="switchTab('tab-pedidos')">
                         📦 Ver Pedidos (<span id="btn-pedidos-count">0</span> uds)
                     </button>
-                    <button type="button" class="btn btn--primary" style="height:44px;padding:0 14px;border-radius:12px;" onclick="handleDownloadCombinedOrderPDFDirect()" title="Descargar PDF Conjunto">
-                        📑 PDF Conjunto
+                    <button type="button" class="btn btn--primary" style="height:44px;padding:0 14px;border-radius:12px;" onclick="handleDownloadInventoryPDFDirect()" title="Descargar Informe Oficial de Inventario Completo para Jefatura">
+                        📋 PDF Informe Inventario (Jefatura)
                     </button>
                 </div>
             </section>
@@ -2132,33 +2132,231 @@ Check list,,20,,5,,15,,sfc
 
         async function handleDownloadCombinedOrderPDFDirect() { await handleExportCombinedOrderPDF(true); }
 
-        async function handleExportInventoryPDF() {
+        async function handleExportInventoryPDF(forceDirectDownload = false) {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.setFontSize(11);
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 14;
+            const primaryColor = [16, 185, 129];
+            const darkTextColor = [30, 41, 59];
+            const un = appData.metadata.unidad || '1315';
+            const fechaStr = appData.metadata.fecha ? formatDate(parseDate(appData.metadata.fecha)) : new Date().toLocaleDateString('es-ES');
+            const respStr = appData.metadata.nombre || 'Personal de Guardia';
+
+            // Cálculos de métricas de auditoría
+            const totalItems = appData.inventory.length;
+            let totalIdeal = 0, totalCurrent = 0, countExpired = 0, countSoon = 0, countLow = 0, countOk = 0;
+
+            appData.inventory.forEach(it => {
+                const ideal = Number(it.idealStock) || 0;
+                const current = Number(it.currentStock) || 0;
+                totalIdeal += ideal;
+                totalCurrent += current;
+                const s = stateOf(it);
+                if (s === 'expired') countExpired++;
+                else if (s === 'soon') countSoon++;
+                if (current < ideal) countLow++;
+                else countOk++;
+            });
+
+            const coveragePct = totalIdeal > 0 ? Math.min(100, Math.round((totalCurrent / totalIdeal) * 100)) : 100;
+
+            // ---- ENCABEZADO INSTITUCIONAL ----
+            doc.setFillColor(...primaryColor);
+            doc.rect(margin, margin, pageWidth - (margin * 2), 22, 'F');
+
             doc.setFont('helvetica', 'bold');
-            doc.text(`INVENTARIO COMPLETO · CONTROL ARMARIO ${appData.metadata.unidad || '1315'}`, 14, 12);
-            doc.setFontSize(9);
+            doc.setFontSize(12.5);
+            doc.setTextColor(255, 255, 255);
+            doc.text('INFORME OFICIAL DE REVISIÓN Y CONTROL DE ARMARIO', margin + 6, margin + 9);
+
             doc.setFont('helvetica', 'normal');
-            doc.text(`Fecha: ${appData.metadata.fecha || new Date().toLocaleDateString('es-ES')}  •  Responsable: ${appData.metadata.nombre || '—'}`, 14, 18);
+            doc.setFontSize(8.5);
+            doc.text(`Documento de Auditoría de Material Sanitario y Existencias • Unidad / Indicativo: ${un}`, margin + 6, margin + 16);
+
+            // ---- FICHA TÉCNICA DE AUDITORÍA ----
+            let currentY = margin + 26;
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 22, 2, 2, 'FD');
+
+            doc.setFontSize(8.5);
+            doc.setTextColor(...darkTextColor);
+            const col1X = margin + 4;
+            const col2X = margin + (pageWidth - margin * 2) / 2 + 4;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Fecha de Revisión:', col1X, currentY + 5.5);
+            doc.setFont('helvetica', 'normal');
+            doc.text(fechaStr, col1X + 28, currentY + 5.5);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Indicativo / Armario:', col1X, currentY + 11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(un, col1X + 31, currentY + 11);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Estado Cobertura:', col1X, currentY + 16.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...(coveragePct === 100 ? [22, 163, 74] : (coveragePct >= 80 ? [217, 119, 6] : [225, 29, 72])));
+            doc.text(`${totalCurrent} / ${totalIdeal} uds (${coveragePct}%)`, col1X + 28, currentY + 16.5);
+
+            doc.setTextColor(...darkTextColor);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Responsable(s):', col2X, currentY + 5.5);
+            doc.setFont('helvetica', 'normal');
+            doc.text(respStr, col2X + 25, currentY + 5.5);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Total Insumos:', col2X, currentY + 11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${totalItems} materiales registrados`, col2X + 23, currentY + 11);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Alertas Caducidad:', col2X, currentY + 16.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...(countExpired > 0 ? [225, 29, 72] : (countSoon > 0 ? [217, 119, 6] : [22, 163, 74])));
+            doc.text(`${countExpired} caducados • ${countSoon} próximos (≤30d)`, col2X + 28, currentY + 16.5);
+
+            currentY += 27;
+
+            // ---- TABLA COMPLETA DE INVENTARIO ----
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9.5);
+            doc.setTextColor(...primaryColor);
+            doc.text('ESTADO DETALLADO DEL INVENTARIO SANITARIO:', margin, currentY);
+            currentY += 3.5;
+
+            const tableRows = [];
+            const cats = [...new Set(appData.inventory.map(i => i.category || 'General'))];
+
+            cats.forEach(cat => {
+                const itemsInCat = appData.inventory.filter(i => (i.category || 'General') === cat);
+                itemsInCat.forEach((item, idx) => {
+                    const s = stateOf(item);
+                    const exInfo = getExpiryBadge(item.expiry);
+                    let estadoTxt = '✅ Conforme';
+                    if (s === 'expired') estadoTxt = '⛔ CADUCADO';
+                    else if (s === 'soon') estadoTxt = '⏳ Próximo';
+                    else if (item.currentStock < item.idealStock) estadoTxt = `⚠️ Falta (${item.idealStock - item.currentStock})`;
+
+                    tableRows.push([
+                        tableRows.length + 1,
+                        item.material,
+                        cat,
+                        item.idealStock,
+                        item.currentStock,
+                        exInfo.text,
+                        estadoTxt
+                    ]);
+                });
+            });
 
             doc.autoTable({
-                startY: 24,
-                head: [['Categoría', 'Material', 'Ideal', 'Actual', 'Pido', 'Caducidad']],
-                body: appData.inventory.map(it => [
-                    it.category,
-                    it.material,
-                    it.idealStock,
-                    it.currentStock,
-                    it.order,
-                    formatDate(parseDate(it.expiry))
-                ]),
+                startY: currentY,
+                head: [['#', 'Material / Insumo', 'Categoría', 'Tener', 'Tengo', 'Caducidad', 'Conformidad']],
+                body: tableRows,
                 theme: 'striped',
-                headStyles: { fillColor: [16, 185, 129] },
-                styles: { fontSize: 8 }
+                headStyles: {
+                    fillColor: primaryColor,
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 8,
+                    halign: 'left'
+                },
+                columnStyles: {
+                    0: { cellWidth: 8, halign: 'center' },
+                    1: { cellWidth: 'auto', fontStyle: 'bold' },
+                    2: { cellWidth: 32, fontStyle: 'normal', textColor: [80, 90, 100] },
+                    3: { cellWidth: 15, halign: 'center' },
+                    4: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
+                    5: { cellWidth: 36, halign: 'left', fontSize: 7.5 },
+                    6: { cellWidth: 26, halign: 'center', fontStyle: 'bold', fontSize: 7.5 }
+                },
+                bodyStyles: { fontSize: 8, cellPadding: 2, textColor: darkTextColor },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                margin: { left: margin, right: margin },
+                didParseCell: function(data) {
+                    if (data.section === 'body' && data.column.index === 6) {
+                        const val = String(data.cell.raw || '');
+                        if (val.includes('CADUCADO')) {
+                            data.cell.styles.textColor = [225, 29, 72];
+                        } else if (val.includes('Falta') || val.includes('Próximo')) {
+                            data.cell.styles.textColor = [217, 119, 6];
+                        } else {
+                            data.cell.styles.textColor = [22, 163, 74];
+                        }
+                    }
+                }
             });
-            await exportAndSharePDF(doc, `Armario_Completo_${appData.metadata.unidad || '1315'}.pdf`, 'Armario Completo', `Inventario de Armario ${appData.metadata.unidad}`);
+
+            currentY = doc.lastAutoTable.finalY + 8;
+
+            // ---- OBSERVACIONES & FIRMAS ----
+            if (currentY > pageHeight - 45) {
+                doc.addPage();
+                currentY = margin + 8;
+            }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.setTextColor(...darkTextColor);
+            doc.text('DILIGENCIA Y CONFORMIDAD DEL INVENTARIO:', margin, currentY);
+            currentY += 3.5;
+
+            const signBoxHeight = 26;
+            const signBoxWidth = (pageWidth - margin * 2 - 6) / 2;
+
+            // Caja Firma 1: Responsable
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(250, 252, 255);
+            doc.roundedRect(margin, currentY, signBoxWidth, signBoxHeight, 2, 2, 'FD');
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.text('RESPONSABLE DEL CHEQUEO:', margin + 4, currentY + 5);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Nombre: ${respStr}`, margin + 4, currentY + 9.5);
+            doc.text('Firma:', margin + 4, currentY + 14);
+
+            // Caja Firma 2: Jefatura / Supervisor
+            doc.roundedRect(margin + signBoxWidth + 6, currentY, signBoxWidth, signBoxHeight, 2, 2, 'FD');
+            doc.setFont('helvetica', 'bold');
+            doc.text('Vº Bº SUPERVISIÓN / JEFATURA DE SERVICIO:', margin + signBoxWidth + 10, currentY + 5);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Nombre / Cargo: __________________________', margin + signBoxWidth + 10, currentY + 9.5);
+            doc.text('Firma / Sello:', margin + signBoxWidth + 10, currentY + 14);
+
+            // ---- PIE DE PÁGINA NUMERADO ----
+            const totalPages = doc.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(7.5);
+                doc.setTextColor(140, 150, 160);
+                doc.text(
+                    `Página ${i} de ${totalPages} • Acta Oficial de Inventario Armario ${un} • Fecha: ${fechaStr}`,
+                    pageWidth / 2,
+                    pageHeight - 6,
+                    { align: 'center' }
+                );
+            }
+
+            const cleanUnit = un.replace(/[^a-zA-Z0-9_-]/g, '-');
+            const fileName = `Informe_Inventario_Armario_${cleanUnit}.pdf`;
+
+            if (forceDirectDownload) {
+                doc.save(fileName);
+                toast('✅ PDF de Inventario para Jefatura descargado.', false);
+            } else {
+                await exportAndSharePDF(doc, fileName, 'Informe de Inventario Armario', `Informe de inventario oficial del armario de la unidad ${un}`);
+                toast('✅ PDF de Inventario generado.', false);
+            }
         }
+
+        async function handleDownloadInventoryPDFDirect() {
+            await handleExportInventoryPDF(true);
+        }
+
 
         // ============================================================
         //  BACKUP, CSV & DESCARGA
@@ -2710,6 +2908,7 @@ Check list,,20,,5,,15,,sfc
         window.exportToCSV = exportToCSV;
         window.downloadApp = downloadApp;
         window.handleExportInventoryPDF = handleExportInventoryPDF;
+        window.handleDownloadInventoryPDFDirect = handleDownloadInventoryPDFDirect;
         window.handleExportOrderPDF = handleExportOrderPDF;
         window.handleDownloadOrderPDFDirect = handleDownloadOrderPDFDirect;
         window.handleExportMonthlyOrderPDF = handleExportMonthlyOrderPDF;
