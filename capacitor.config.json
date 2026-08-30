@@ -1,0 +1,12 @@
+{
+  "appId": "com.controlarmario.inventario1315",
+  "appName": "Control de Armario Pro",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

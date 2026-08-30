@@ -1,0 +1,16 @@
+{
+  "name": "inventario-1315",
+  "version": "1.0.0",
+  "description": "App portable de gestión de inventario (SVB) en HTML",
+  "main": "index.html",
+  "scripts": {
+    "build": "node -e \"console.log('Build complete')\""
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

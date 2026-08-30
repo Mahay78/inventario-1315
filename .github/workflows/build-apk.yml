@@ -1,0 +1,87 @@
+name: Compilar APK Android
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Generar APK de Android
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Configurar Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: 17
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar dependencias npm
+        run: npm ci
+
+      - name: Preparar carpeta web
+        run: |
+          mkdir -p www
+          cp -r index.html manifest.webmanifest sw.js www/ 2>/dev/null || true
+
+      - name: Añadir y sincronizar plataforma Android
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Configurar permisos de Cámara e Internet
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if grep -q "android.permission.CAMERA" "$MANIFEST"; then
+            echo "Permisos ya existen."
+          else
+            sed -i '/<application/i \    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />' "$MANIFEST"
+          fi
+
+      - name: Permisos para Gradle
+        run: chmod +x android/gradlew
+
+      - name: Compilar APK (Debug)
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Subir APK a Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Control-de-Armario-Pro-1315-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Publicar Release con APK
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: apk-build-${{ github.run_number }}
+          name: Control de Armario Pro (Build #${{ github.run_number }})
+          body: |
+            ### 📱 APK de Control de Armario Pro (1315)
+            Compilación automática generada con GitHub Actions.
+            
+            - Descarga el archivo **`app-debug.apk`** adjunto abajo.
+            - Instálalo en tu dispositivo Android.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
