@@ -55,20 +55,27 @@ jobs:
             sed -i '/<application/i \    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />' "$MANIFEST"
           fi
 
-      - name: Configurar Firma Release en Gradle
-        run: |
-          GRADLE_FILE="android/app/build.gradle"
-          sed -i 's/buildTypes {/signingConfigs {\n        release {\n            storeFile file("..\/..\/release.keystore")\n            storePassword "controlarmario1315"\n            keyAlias "controlarmario"\n            keyPassword "controlarmario1315"\n        }\n    }\n    buildTypes {/' "$GRADLE_FILE"
-          sed -i 's/release {/release {\n            signingConfig signingConfigs.release/' "$GRADLE_FILE"
-
       - name: Permisos para Gradle
         run: chmod +x android/gradlew
 
-      - name: Compilar APK Oficial (Release Firmada)
+      - name: Compilar APK Release
         run: |
           cd android
           ./gradlew assembleRelease --no-daemon
-          cp app/build/outputs/apk/release/app-release.apk ../Control_de_Armario_Pro_1315.apk
+
+      - name: Alinear y Firmar APK con Keystore Oficial (v1, v2, v3, v4)
+        run: |
+          BUILD_TOOLS_DIR=$(find $ANDROID_HOME/build-tools/ -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          echo "Usando Build Tools: $BUILD_TOOLS_DIR"
+          
+          # Zipalign
+          $BUILD_TOOLS_DIR/zipalign -v -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk android/app/build/outputs/apk/release/app-release-aligned.apk
+          
+          # Firmar con apksigner oficial
+          $BUILD_TOOLS_DIR/apksigner sign --ks release.keystore --ks-key-alias controlarmario --ks-pass pass:controlarmario1315 --key-pass pass:controlarmario1315 --out Control_de_Armario_Pro_1315.apk android/app/build/outputs/apk/release/app-release-aligned.apk
+          
+          # Verificar firma
+          $BUILD_TOOLS_DIR/apksigner verify -v Control_de_Armario_Pro_1315.apk
 
       - name: Subir APK a Artifacts
         uses: actions/upload-artifact@v4
