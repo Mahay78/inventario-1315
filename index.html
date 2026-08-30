@@ -2140,6 +2140,45 @@ Check list,,20,,5,,15,,sfc
 
         async function handleDownloadOrderPDFDirect() { await handleExportOrderPDF(true); }
 
+        // Función para consolidar insumos del pedido mensual sumando cantidades de distintas ubicaciones
+        function getConsolidatedMonthlyOrders(orders) {
+            const map = new Map();
+            (orders || []).forEach(item => {
+                const mat = (item.material || '').trim();
+                if (!mat) return;
+                const key = mat.toLowerCase();
+                const qty = Number(item.quantity) || 0;
+                const loc = (item.location || '').trim();
+
+                if (!map.has(key)) {
+                    map.set(key, {
+                        material: mat,
+                        totalQty: 0,
+                        locations: []
+                    });
+                }
+                const entry = map.get(key);
+                entry.totalQty += qty;
+                if (loc) {
+                    entry.locations.push({ loc, qty });
+                }
+            });
+
+            return Array.from(map.values()).map(entry => {
+                let locationStr = 'Almacén / Farmacia';
+                if (entry.locations.length === 1) {
+                    locationStr = entry.locations[0].loc;
+                } else if (entry.locations.length > 1) {
+                    locationStr = entry.locations.map(l => `${l.loc} (${l.qty})`).join(', ');
+                }
+                return {
+                    material: entry.material,
+                    location: locationStr,
+                    quantity: entry.totalQty
+                };
+            });
+        }
+
         // 2. PDF Pedido Mensual
         async function handleExportMonthlyOrderPDF(forceDirectDownload = false) {
             const { jsPDF } = window.jspdf;
@@ -2148,11 +2187,16 @@ Check list,,20,,5,,15,,sfc
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 14;
             const primaryColor = [14, 165, 233];
+            const darkTextColor = [30, 41, 59];
 
             if (!appData.monthlyOrders || !appData.monthlyOrders.length) {
                 toast('No hay insumos añadidos al pedido mensual.', false);
                 return;
             }
+
+            // Consolidar insumos por nombre (sumando las cantidades de varias ubicaciones)
+            const consolidated = getConsolidatedMonthlyOrders(appData.monthlyOrders);
+            const totalUnits = consolidated.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
 
             doc.setFillColor(...primaryColor);
             doc.rect(margin, margin, pageWidth - (margin * 2), 22, 'F');
@@ -2162,31 +2206,80 @@ Check list,,20,,5,,15,,sfc
             doc.text('SOLICITUD DE PEDIDO MENSUAL INDEPENDIENTE', margin + 6, margin + 9);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(9);
-            doc.text('Unidad: ' + (appData.metadata.unidad || '1315') + ' • Farmacia Central / Almacén', margin + 6, margin + 16);
+            doc.text('Unidad: ' + (appData.metadata.unidad || '1315') + ' • Farmacia Central / Almacén (Totales Consolidados)', margin + 6, margin + 16);
 
-            let currentY = margin + 28;
-            const tableData = appData.monthlyOrders.map((item, idx) => [
+            // Metadatos
+            let currentY = margin + 27;
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 14, 2, 2, 'FD');
+
+            doc.setFontSize(8.5);
+            doc.setTextColor(...darkTextColor);
+            const col1X = margin + 4;
+            const col2X = margin + (pageWidth - margin * 2) / 2 + 4;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Fecha:', col1X, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.fecha || new Date().toLocaleDateString('es-ES'), col1X + 15, currentY + 6);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Armario / Unidad:', col1X, currentY + 11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.unidad || '1315', col1X + 30, currentY + 11);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Responsable(s):', col2X, currentY + 6);
+            doc.setFont('helvetica', 'normal');
+            doc.text(appData.metadata.nombre || '—', col2X + 28, currentY + 6);
+
+            currentY += 19;
+
+            const tableData = consolidated.map((item, idx) => [
                 idx + 1,
                 item.material,
-                item.location || 'Almacén / Farmacia',
+                item.location,
                 item.quantity
             ]);
 
             doc.autoTable({
                 startY: currentY,
-                head: [['#', 'Material / Insumo Solicitado', 'Destino / Ubicación', 'Cantidad']],
+                head: [['#', 'Material / Insumo Solicitado (Consolidado)', 'Destino(s) / Ubicación', 'Cantidad Total']],
                 body: tableData,
+                foot: [['', 'TOTAL GENERAL DE INSUMOS', `${consolidated.length} insumos distintos`, `${totalUnits} uds`]],
                 theme: 'striped',
                 headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+                footStyles: { fillColor: [240, 249, 255], textColor: primaryColor, fontStyle: 'bold', fontSize: 8.5 },
                 columnStyles: {
                     0: { cellWidth: 10, halign: 'center' },
                     1: { cellWidth: 'auto', fontStyle: 'bold' },
-                    2: { cellWidth: 50, fontStyle: 'normal' },
-                    3: { cellWidth: 30, halign: 'center', fontStyle: 'bold', textColor: primaryColor }
+                    2: { cellWidth: 55, fontStyle: 'normal' },
+                    3: { cellWidth: 32, halign: 'center', fontStyle: 'bold', textColor: primaryColor }
                 },
                 bodyStyles: { fontSize: 8.5, cellPadding: 2.5 },
                 margin: { left: margin, right: margin }
             });
+
+            currentY = doc.lastAutoTable.finalY + 8;
+            if (currentY > pageHeight - 40) { doc.addPage(); currentY = margin + 8; }
+
+            const customNotes = (document.getElementById('pdf-custom-notes')?.value || '').trim();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(...darkTextColor);
+            doc.text('OBSERVACIONES / FIRMA:', margin, currentY);
+            currentY += 3.5;
+
+            doc.setDrawColor(203, 213, 225);
+            doc.setFillColor(250, 252, 255);
+            doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 22, 2, 2, 'FD');
+            if (customNotes) {
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(8.5);
+                doc.setTextColor(60, 70, 80);
+                doc.text(customNotes, margin + 4, currentY + 6, { maxWidth: pageWidth - margin * 2 - 8 });
+            }
 
             const un = (appData.metadata.unidad || '1315').replace(/[^a-zA-Z0-9_-]/g, '-');
             const fileName = `Pedido_Mensual_${un}.pdf`;
@@ -2268,30 +2361,35 @@ Check list,,20,,5,,15,,sfc
 
             // Bloque Mensual
             if (moItems.length) {
+                const moConsolidated = getConsolidatedMonthlyOrders(moItems);
+                const moTotalUnits = moConsolidated.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
+
                 if (currentY > pageHeight - 50) { doc.addPage(); currentY = margin + 8; }
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(10);
                 doc.setTextColor(...secondaryColor);
-                doc.text('2. PEDIDO MENSUAL INDEPENDIENTE:', margin, currentY);
+                doc.text('2. PEDIDO MENSUAL INDEPENDIENTE (CONSOLIDADO):', margin, currentY);
                 currentY += 4;
 
-                const moData = moItems.map((item, idx) => [
+                const moData = moConsolidated.map((item, idx) => [
                     idx + 1,
                     item.material,
-                    item.location || 'Almacén / Farmacia',
+                    item.location,
                     item.quantity
                 ]);
 
                 doc.autoTable({
                     startY: currentY,
-                    head: [['#', 'Material Mensual', 'Destino', 'Cantidad']],
+                    head: [['#', 'Material Mensual (Consolidado)', 'Destino(s)', 'Cantidad Total']],
                     body: moData,
+                    foot: [['', 'TOTAL PEDIDO MENSUAL', `${moConsolidated.length} insumos`, `${moTotalUnits} uds`]],
                     theme: 'striped',
                     headStyles: { fillColor: secondaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+                    footStyles: { fillColor: [240, 249, 255], textColor: secondaryColor, fontStyle: 'bold', fontSize: 8 },
                     columnStyles: {
                         0: { cellWidth: 10, halign: 'center' },
                         1: { cellWidth: 'auto', fontStyle: 'bold' },
-                        2: { cellWidth: 45 },
+                        2: { cellWidth: 50 },
                         3: { cellWidth: 28, halign: 'center', fontStyle: 'bold', textColor: secondaryColor }
                     },
                     bodyStyles: { fontSize: 8, cellPadding: 2 },
