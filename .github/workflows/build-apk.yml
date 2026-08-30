@@ -1,4 +1,4 @@
-name: Compilar APK Android
+name: Compilar APK Android (Release Oficial)
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Generar APK de Android
+    name: Generar APK de Android (Release Firmada)
     runs-on: ubuntu-latest
 
     steps:
@@ -55,33 +55,40 @@ jobs:
             sed -i '/<application/i \    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />' "$MANIFEST"
           fi
 
+      - name: Configurar Firma Release en Gradle
+        run: |
+          GRADLE_FILE="android/app/build.gradle"
+          sed -i 's/buildTypes {/signingConfigs {\n        release {\n            storeFile file("..\/..\/release.keystore")\n            storePassword "controlarmario1315"\n            keyAlias "controlarmario"\n            keyPassword "controlarmario1315"\n        }\n    }\n    buildTypes {/' "$GRADLE_FILE"
+          sed -i 's/release {/release {\n            signingConfig signingConfigs.release/' "$GRADLE_FILE"
+
       - name: Permisos para Gradle
         run: chmod +x android/gradlew
 
-      - name: Compilar APK (Debug)
+      - name: Compilar APK Oficial (Release Firmada)
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../Control_de_Armario_Pro_1315.apk
 
       - name: Subir APK a Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Control-de-Armario-Pro-1315-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Control-de-Armario-Pro-1315-Release-APK
+          path: Control_de_Armario_Pro_1315.apk
           retention-days: 30
 
       - name: Publicar Release con APK
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
         with:
-          files: android/app/build/outputs/apk/debug/app-debug.apk
-          tag_name: apk-build-${{ github.run_number }}
-          name: Control de Armario Pro (Build #${{ github.run_number }})
+          files: Control_de_Armario_Pro_1315.apk
+          tag_name: v1.0.${{ github.run_number }}
+          name: Control de Armario Pro v1.0.${{ github.run_number }} (Oficial)
           body: |
-            ### 📱 APK de Control de Armario Pro (1315)
-            Compilación automática generada con GitHub Actions.
+            ### 📱 APK Oficial Firmada (Release)
+            Versión optimizada y firmada para producción lista para instalar en Android.
             
-            - Descarga el archivo **`app-debug.apk`** adjunto abajo.
-            - Instálalo en tu dispositivo Android.
+            - **Descarga:** Haz clic en **`Control_de_Armario_Pro_1315.apk`** adjunto abajo.
+            - **Instalación:** Abre el archivo descargado e instálalo normalmente.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
