@@ -3,4 +3,6 @@ www/
 android/
 .gradle/
 *.log
+*.apk
+dist-apk/
 inventario_app_1315 (5) (1).html
