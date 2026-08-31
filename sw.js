@@ -1,5 +1,5 @@
 // Service Worker para Control de Armario Pro
-const CACHE_NAME = 'armario-pro-v9';
+const CACHE_NAME = 'armario-pro-v10';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
