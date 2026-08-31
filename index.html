@@ -1058,12 +1058,13 @@
                 <div id="p2p-panel-host">
                     <div style="text-align:center;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:16px;margin-bottom:12px;">
                         <div style="font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px;">Tu Código de Conexión</div>
-                        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;">
-                            <span id="p2p-my-code" style="font-size:26px;font-weight:800;letter-spacing:2px;color:var(--primary);font-family:monospace;">Generando...</span>
+                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">
+                            <span id="p2p-my-code" style="font-size:28px;font-weight:800;letter-spacing:3px;color:var(--primary);font-family:monospace;">----</span>
                             <button type="button" class="btn btn--ghost" style="padding:4px 10px;height:34px;font-size:12px;" onclick="copyP2PCode()" title="Copiar código">📋 Copiar</button>
+                            <button type="button" class="btn btn--ghost" style="padding:4px 10px;height:34px;font-size:12px;" onclick="startP2PHost(true)" title="Crear nueva sala / Reconectar">🔄 Nueva</button>
                         </div>
                         <div style="font-size:12px;color:var(--text-soft);" id="p2p-host-status">
-                            ⏳ Esperando que tu compañero se conecte...
+                            ⏳ Registrando sala P2P...
                         </div>
                     </div>
 
@@ -3261,13 +3262,59 @@ Check list,,20,,5,,15,,sfc
             if (modal) modal.classList.remove('is-open');
         }
 
-        function renderP2PHostUI() {
+        let p2pCandidates = [];
+        let p2pCandidateIdx = 0;
+
+        function getCandidatePeerIds(rawTarget) {
+            if (!rawTarget) return [];
+            let val = String(rawTarget).trim();
+            if (val.includes('#p2p=')) {
+                val = val.split('#p2p=')[1].trim();
+            }
+            
+            const cleanDigits = val.replace(/[^0-9]/g, '');
+            const cleanCode = val.replace(/[^a-zA-Z0-9_-]/g, '');
+
+            const list = [];
+            
+            // Si tiene 4 dígitos (ej: 4821)
+            if (cleanDigits.length === 4) {
+                list.push(`armario1315-${cleanDigits}`);
+                list.push(`armario-1315-${cleanDigits}`);
+                list.push(`armario-${cleanDigits}`);
+                list.push(cleanDigits);
+            }
+
+            if (val.startsWith('armario-1315-')) {
+                list.unshift(val);
+                list.push(val.replace('armario-1315-', 'armario1315-'));
+            } else if (val.startsWith('armario1315-')) {
+                list.unshift(val);
+                list.push(val.replace('armario1315-', 'armario-1315-'));
+            } else if (val.startsWith('armario-')) {
+                list.unshift(val);
+            } else if (cleanCode) {
+                if (!list.includes(`armario1315-${cleanCode}`)) list.push(`armario1315-${cleanCode}`);
+                if (!list.includes(`armario-1315-${cleanCode}`)) list.push(`armario-1315-${cleanCode}`);
+                if (!list.includes(cleanCode)) list.push(cleanCode);
+            }
+
+            return [...new Set(list)];
+        }
+
+        function renderP2PHostUI(isOnline = false) {
             const codeEl = document.getElementById('p2p-my-code');
             const statusEl = document.getElementById('p2p-host-status');
             const qrcEl = document.getElementById('p2p-qrcode-canvas');
 
             if (codeEl) codeEl.textContent = p2pShortCode;
-            if (statusEl) statusEl.textContent = '⏳ Esperando que tu compañero se conecte...';
+            if (statusEl) {
+                if (isOnline) {
+                    statusEl.innerHTML = '🟢 <strong style="color:var(--ok);">Sala lista y en línea</strong><br><span style="font-size:11px;color:var(--text-soft);">Tu compañero ya puede introducir este código o escanear el QR.</span>';
+                } else {
+                    statusEl.innerHTML = '⏳ <span style="color:var(--warn);">Conectando con el servidor de salas...</span>';
+                }
+            }
 
             if (qrcEl) {
                 qrcEl.innerHTML = '';
@@ -3301,6 +3348,40 @@ Check list,,20,,5,,15,,sfc
             }
         }
 
+        function handlePeerError(err) {
+            console.warn("PeerJS error:", err);
+            if (err.type === 'unavailable-id') {
+                if (p2pViewMode === 'host') {
+                    startP2PHost(true);
+                }
+                return;
+            }
+
+            if (err.type === 'peer-unavailable') {
+                // Si estamos buscando como cliente, probamos el siguiente formato de ID candidato
+                if (p2pCandidates.length > 0 && p2pCandidateIdx < p2pCandidates.length - 1) {
+                    p2pCandidateIdx++;
+                    console.log(`Reintentando con candidato alternativo ${p2pCandidateIdx}: ${p2pCandidates[p2pCandidateIdx]}`);
+                    tryConnectCurrentCandidate();
+                    return;
+                }
+                if (p2pConnectTimeout) {
+                    clearTimeout(p2pConnectTimeout);
+                    p2pConnectTimeout = null;
+                }
+                toast('⚠️ No se encontró al compañero. Comprueba que el código siga en su pantalla.', false);
+                updateP2PStatusUI('off');
+                return;
+            }
+
+            if (p2pConnectTimeout) {
+                clearTimeout(p2pConnectTimeout);
+                p2pConnectTimeout = null;
+            }
+            toast(`Aviso P2P: ${err.message || err.type}`, false);
+            updateP2PStatusUI('off');
+        }
+
         function startP2PHost(forceNew = false) {
             if (p2pConnectTimeout) {
                 clearTimeout(p2pConnectTimeout);
@@ -3308,7 +3389,7 @@ Check list,,20,,5,,15,,sfc
             }
 
             if (p2pPeer && !p2pPeer.destroyed && p2pPeer.open && !forceNew && p2pMyId) {
-                renderP2PHostUI();
+                renderP2PHostUI(true);
                 return;
             }
             if (typeof Peer === 'undefined') {
@@ -3320,8 +3401,7 @@ Check list,,20,,5,,15,,sfc
             p2pMyId = `armario1315-${p2pShortCode}`;
 
             updateP2PStatusUI('connecting');
-            const statusEl = document.getElementById('p2p-host-status');
-            if (statusEl) statusEl.textContent = '⏳ Registrando sala P2P...';
+            renderP2PHostUI(false);
 
             try {
                 if (p2pPeer && !p2pPeer.destroyed) {
@@ -3337,26 +3417,17 @@ Check list,,20,,5,,15,,sfc
 
                 p2pPeer.on('open', (id) => {
                     p2pMyId = id;
-                    renderP2PHostUI();
+                    renderP2PHostUI(true);
                 });
 
                 p2pPeer.on('connection', (conn) => {
                     setupP2PConnection(conn, 'host');
                 });
 
-                p2pPeer.on('error', (err) => {
-                    console.warn("PeerJS Host error:", err);
-                    if (err.type === 'unavailable-id') {
-                        startP2PHost(true);
-                    } else if (err.type === 'peer-unavailable') {
-                        toast('No se encontró al compañero. Verifica el código.', false);
-                        updateP2PStatusUI('off');
-                    } else {
-                        toast(`Aviso P2P: ${err.message || err.type}`, false);
-                    }
-                });
+                p2pPeer.on('error', handlePeerError);
 
                 p2pPeer.on('disconnected', () => {
+                    renderP2PHostUI(false);
                     if (p2pPeer && !p2pPeer.destroyed) {
                         try { p2pPeer.reconnect(); } catch(e) {}
                     }
@@ -3390,12 +3461,36 @@ Check list,,20,,5,,15,,sfc
 
         function connectToP2PPeer(rawTarget) {
             if (!rawTarget) return;
-            const targetId = normalizePeerCode(rawTarget);
 
-            if (targetId.includes('#sync=')) {
+            if (rawTarget.includes('#sync=')) {
                 processReceivedSyncData(rawTarget);
                 return;
             }
+
+            p2pCandidates = getCandidatePeerIds(rawTarget);
+            p2pCandidateIdx = 0;
+
+            if (!p2pCandidates.length) {
+                toast('Introduce un código de sala válido.', false);
+                return;
+            }
+
+            tryConnectCurrentCandidate();
+        }
+
+        function tryConnectCurrentCandidate() {
+            if (p2pCandidateIdx >= p2pCandidates.length) {
+                if (p2pConnectTimeout) {
+                    clearTimeout(p2pConnectTimeout);
+                    p2pConnectTimeout = null;
+                }
+                updateP2PStatusUI('off');
+                toast('⚠️ No se encontró al compañero. Verifica que tenga la sala abierta en su pantalla.', false);
+                return;
+            }
+
+            const targetId = p2pCandidates[p2pCandidateIdx];
+            const displayCode = targetId.replace('armario1315-', '').replace('armario-1315-', '').replace('armario-', '');
 
             if (typeof Peer === 'undefined') {
                 toast('Librería WebRTC P2P no disponible.', false);
@@ -3404,18 +3499,18 @@ Check list,,20,,5,,15,,sfc
 
             if (p2pConnectTimeout) clearTimeout(p2pConnectTimeout);
             updateP2PStatusUI('connecting');
-            const displayCode = targetId.replace('armario1315-', '').replace('armario-1315-', '');
-            toast(`Conectando con sala P2P (${displayCode})...`, false);
+            if (p2pCandidateIdx === 0) {
+                toast(`Buscando compañero (${displayCode})...`, false);
+            }
 
-            // Timeout de 14 segundos para notificar si no logra conectar
             p2pConnectTimeout = setTimeout(() => {
                 if (!p2pConnected) {
-                    toast('⚠️ Tiempo de espera agotado. Verifica que el otro teléfono tenga la app abierta en "Crear Sala".', false);
+                    toast('⚠️ Tiempo de espera agotado. Pulsa Reconectar en ambos teléfonos.', false);
                     updateP2PStatusUI('off');
                 }
-            }, 14000);
+            }, 15000);
 
-            const initiateConnection = (peerInstance) => {
+            const initiate = (peerInstance) => {
                 try {
                     const conn = peerInstance.connect(targetId, {
                         reliable: true,
@@ -3423,9 +3518,9 @@ Check list,,20,,5,,15,,sfc
                     });
                     setupP2PConnection(conn, 'client');
                 } catch(e) {
-                    console.error("Error al conectar DataChannel:", e);
-                    toast('Error iniciando conexión con el compañero.', false);
-                    updateP2PStatusUI('off');
+                    console.warn("Fallo conectando candidato:", targetId, e);
+                    p2pCandidateIdx++;
+                    tryConnectCurrentCandidate();
                 }
             };
 
@@ -3441,21 +3536,8 @@ Check list,,20,,5,,15,,sfc
                             iceServers: P2P_ICE_SERVERS
                         }
                     });
-                    p2pPeer.on('open', () => {
-                        initiateConnection(p2pPeer);
-                    });
-                    p2pPeer.on('error', (err) => {
-                        if (p2pConnectTimeout) {
-                            clearTimeout(p2pConnectTimeout);
-                            p2pConnectTimeout = null;
-                        }
-                        if (err.type === 'peer-unavailable') {
-                            toast('⚠️ Código no encontrado. Comprueba que el código esté en la pantalla del otro móvil.', false);
-                        } else {
-                            toast(`Error P2P: ${err.type || err.message}`, false);
-                        }
-                        updateP2PStatusUI('off');
-                    });
+                    p2pPeer.on('open', () => initiate(p2pPeer));
+                    p2pPeer.on('error', handlePeerError);
                 } catch(e) {
                     if (p2pConnectTimeout) {
                         clearTimeout(p2pConnectTimeout);
@@ -3465,11 +3547,9 @@ Check list,,20,,5,,15,,sfc
                     updateP2PStatusUI('off');
                 }
             } else if (p2pPeer.open) {
-                initiateConnection(p2pPeer);
+                initiate(p2pPeer);
             } else {
-                p2pPeer.once('open', () => {
-                    initiateConnection(p2pPeer);
-                });
+                p2pPeer.once('open', () => initiate(p2pPeer));
             }
         }
 
