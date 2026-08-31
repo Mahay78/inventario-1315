@@ -427,7 +427,64 @@
             --text:          #e6edf3;
             --text-soft:     #9aa8b6;
             --text-faint:    #67788a;
+        }
 
+        /* Chat de Dotación en Vivo */
+        .floating-chat-btn {
+            position: fixed; right: 18px; bottom: calc(84px + env(safe-area-inset-bottom));
+            width: 52px; height: 52px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            color: #04121a; border: 0; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; cursor: pointer; z-index: 95;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .floating-chat-btn:active { transform: scale(.92); }
+        .floating-chat-badge, .chat-badge {
+            position: absolute; top: -3px; right: -3px;
+            background: var(--danger); color: #ffffff;
+            font-size: 11px; font-weight: 800;
+            padding: 2px 6px; border-radius: 999px;
+            border: 2px solid var(--surface); line-height: 1;
+        }
+        .chat-msg {
+            max-width: 82%; padding: 8px 12px; border-radius: 14px;
+            display: flex; flex-direction: column; gap: 3px; font-size: 13.5px;
+            word-break: break-word; animation: chatPop .15s ease-out;
+        }
+        @keyframes chatPop {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-msg--mine {
+            align-self: flex-end; background: linear-gradient(135deg, var(--primary), #059669);
+            color: #ffffff; border-bottom-right-radius: 4px;
+        }
+        .chat-msg--theirs {
+            align-self: flex-start; background: var(--surface-2);
+            color: var(--text); border: 1px solid var(--border-soft);
+            border-bottom-left-radius: 4px;
+        }
+        .chat-msg--system {
+            align-self: center; background: var(--surface-3);
+            color: var(--text-soft); border: 1px solid var(--border-soft);
+            font-size: 11.5px; font-weight: 600; padding: 4px 10px;
+            border-radius: 999px; max-width: 92%; text-align: center;
+        }
+        .chat-msg__meta {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px; font-size: 11px; opacity: .85;
+        }
+        .chat-msg--mine .chat-msg__meta { color: rgba(255,255,255,.9); }
+        .chat-msg--theirs .chat-msg__meta { color: var(--text-faint); }
+        .quick-chip {
+            padding: 5px 10px; border-radius: 999px; background: var(--surface-3);
+            border: 1px solid var(--border); color: var(--text); font-size: 12px;
+            font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .15s;
+        }
+        .quick-chip:active { background: var(--primary-dim); color: var(--primary); }
+
+        html[data-theme="dark"] {
             --accent:        #22d3ee;
             --accent-dim:    rgba(34, 211, 238, .14);
             --primary:       #0ea5e9;
@@ -487,6 +544,10 @@
             </div>
         </div>
         <div class="topbar__actions">
+            <button class="icon-btn" id="topbar-chat-btn" title="Chat de Dotación en Vivo" onclick="openChatModal()" style="position:relative;">
+                <span>💬</span>
+                <span class="chat-badge" id="topbar-chat-badge" style="display:none;">0</span>
+            </button>
             <button class="icon-btn" id="topbar-p2p-btn" title="Sincronización P2P en Vivo (WebRTC)" onclick="openP2PModal()">
                 <span id="p2p-icon-symbol">📡</span>
                 <span class="p2p-status-dot p2p-status-dot--off" id="p2p-status-dot"></span>
@@ -1123,6 +1184,9 @@
                 </div>
 
                 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+                    <button type="button" class="btn btn--ghost" onclick="openChatModal()" style="font-weight:700;background:var(--surface-3);color:var(--primary);border-color:var(--primary);">
+                        💬 Abrir Chat de Dotación
+                    </button>
                     <button type="button" class="btn btn--primary" onclick="sendFullP2PSync()">
                         ⚡ Transmitir mi Inventario Completo
                     </button>
@@ -1137,6 +1201,57 @@
 
         </div>
     </div>
+
+    <!-- MODAL CHAT DE DOTACIÓN EN VIVO -->
+    <div class="overlay" id="chat-modal">
+        <div class="sheet" style="max-width:520px;height:84vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
+            <div class="sheet__head" style="padding:14px 18px;border-bottom:1px solid var(--border-soft);margin-bottom:0;background:var(--surface-2);">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="font-size:22px;">💬</div>
+                    <div>
+                        <div class="sheet__title" style="margin-bottom:2px;font-size:16px;">Chat de Dotación en Vivo</div>
+                        <div style="font-size:11.5px;color:var(--text-soft);" id="chat-header-status">
+                            <span class="p2p-status-dot p2p-status-dot--on" style="display:inline-block;margin-right:4px;"></span> Sala <b id="chat-room-badge">----</b> · En directo
+                        </div>
+                    </div>
+                </div>
+                <button class="sheet__close" onclick="closeChatModal()">✕</button>
+            </div>
+
+            <!-- Lista de Mensajes -->
+            <div id="chat-messages-container" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--bg);">
+                <div id="chat-empty-state" style="text-align:center;color:var(--text-faint);padding:30px 10px;font-size:13px;">
+                    <div style="font-size:32px;margin-bottom:8px;">💬</div>
+                    <b>Canal de mensajes de la dotación</b><br>
+                    Escribe a tus compañeros o pulsa los mensajes rápidos.
+                </div>
+            </div>
+
+            <!-- Barra de Mensajes Rápidos (1 toque con guantes) -->
+            <div class="chat-quick-bar" style="padding:8px 12px;background:var(--surface-2);border-top:1px solid var(--border-soft);display:flex;gap:6px;overflow-x:auto;white-space:nowrap;">
+                <button type="button" class="quick-chip" onclick="sendQuickChat('🟢 Armario revisado y completo')">🟢 Armario OK</button>
+                <button type="button" class="quick-chip" onclick="sendQuickChat('📦 Voy a Almacén / Farmacia a reponer')">📦 Voy a Almacén</button>
+                <button type="button" class="quick-chip" onclick="sendQuickChat('🔴 Faltan insumos en la unidad')">🔴 Faltan Insumos</button>
+                <button type="button" class="quick-chip" onclick="sendQuickChat('🎒 ¿Revisas tú la mochila de vía aérea?')">🎒 Mochila Vía Aérea</button>
+                <button type="button" class="quick-chip" onclick="sendQuickChat('❓ ¿Dónde está el material?')">❓ ¿Dónde está?</button>
+                <button type="button" class="quick-chip" onclick="sendQuickChat('✅ Relevo listo para entregar')">✅ Relevo Listo</button>
+            </div>
+
+            <!-- Barra de Entrada de Texto -->
+            <form id="chat-form" onsubmit="handleChatSubmit(event)" style="display:flex;gap:8px;padding:12px;background:var(--surface);border-top:1px solid var(--border);">
+                <input type="text" id="chat-input" placeholder="Escribe un mensaje a la dotación..." autocomplete="off" style="flex:1;height:44px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:0 14px;font-size:14px;color:var(--text);outline:none;">
+                <button type="submit" class="btn btn--primary" style="flex:none;height:44px;padding:0 18px;border-radius:12px;font-weight:800;">
+                    <span>📤</span> Enviar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- BOTÓN FLOTANTE DE CHAT -->
+    <button type="button" class="floating-chat-btn" id="floating-chat-btn" onclick="openChatModal()" title="Abrir Chat de Dotación">
+        <span>💬</span>
+        <span class="floating-chat-badge" id="floating-chat-badge" style="display:none;">0</span>
+    </button>
 
     <!-- Librerías JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -3554,6 +3669,27 @@ Check list,,20,,5,,15,,sfc
                 return;
             }
 
+            if (data.type === 'CHAT_MSG') {
+                chatMessages.push({
+                    id: data.id || ('msg_' + Date.now()),
+                    text: data.text || '',
+                    sender: data.sender || 'Compañero',
+                    unidad: data.unidad || '1315',
+                    time: data.time || (pad(new Date().getHours()) + ':' + pad(new Date().getMinutes())),
+                    isMine: false
+                });
+
+                hapticPulse();
+                if (isChatModalOpen) {
+                    renderChatMessages();
+                } else {
+                    unreadChatCount++;
+                    updateChatBadgeUI();
+                    toast(`💬 ${data.sender || 'Compañero'}: ${data.text}`, false);
+                }
+                return;
+            }
+
             if (data.type === 'DISCONNECT') {
                 p2pConnected = false;
                 updateP2PStatusUI('off');
@@ -3607,6 +3743,150 @@ Check list,,20,,5,,15,,sfc
             stopP2PQRScan();
             updateP2PStatusUI('off');
             toast('Conexión finalizada.', false);
+        }
+
+        // ============================================================
+        //  CHAT DE DOTACIÓN EN VIVO (Tiempo Real por MQTT)
+        // ============================================================
+        let chatMessages = [];
+        let unreadChatCount = 0;
+        let isChatModalOpen = false;
+
+        function openChatModal() {
+            const modal = document.getElementById('chat-modal');
+            if (modal) modal.classList.add('is-open');
+            isChatModalOpen = true;
+            unreadChatCount = 0;
+            updateChatBadgeUI();
+            
+            const badge = document.getElementById('chat-room-badge');
+            if (badge) badge.textContent = p2pShortCode || '----';
+            
+            const statusEl = document.getElementById('chat-header-status');
+            if (statusEl) {
+                if (p2pConnected) {
+                    statusEl.innerHTML = '<span class="p2p-status-dot p2p-status-dot--on" style="display:inline-block;margin-right:4px;"></span> Sala <b>' + (p2pShortCode || '') + '</b> · En directo';
+                } else {
+                    statusEl.innerHTML = '<span class="p2p-status-dot p2p-status-dot--off" style="display:inline-block;margin-right:4px;"></span> Desconectado (Conéctate en P2P)';
+                }
+            }
+
+            renderChatMessages();
+            setTimeout(() => {
+                const input = document.getElementById('chat-input');
+                if (input) input.focus();
+            }, 100);
+        }
+
+        function closeChatModal() {
+            const modal = document.getElementById('chat-modal');
+            if (modal) modal.classList.remove('is-open');
+            isChatModalOpen = false;
+        }
+
+        function updateChatBadgeUI() {
+            const floatBadge = document.getElementById('floating-chat-badge');
+            const topBadge = document.getElementById('topbar-chat-badge');
+            
+            [floatBadge, topBadge].forEach(b => {
+                if (!b) return;
+                if (unreadChatCount > 0) {
+                    b.style.display = 'inline-block';
+                    b.textContent = unreadChatCount > 9 ? '9+' : unreadChatCount;
+                } else {
+                    b.style.display = 'none';
+                }
+            });
+        }
+
+        function renderChatMessages() {
+            const container = document.getElementById('chat-messages-container');
+            if (!container) return;
+
+            if (!chatMessages.length) {
+                container.innerHTML = `
+                    <div id="chat-empty-state" style="text-align:center;color:var(--text-faint);padding:30px 10px;font-size:13px;">
+                        <div style="font-size:32px;margin-bottom:8px;">💬</div>
+                        <b>Canal de mensajes de la dotación</b><br>
+                        ${p2pConnected ? 'Escribe a tus compañeros o pulsa los mensajes rápidos.' : '<span style="color:var(--warn);">Conecta una sala P2P para chatear en tiempo real.</span>'}
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            chatMessages.forEach(msg => {
+                if (msg.isSystem) {
+                    html += `<div class="chat-msg chat-msg--system">${escapeHtml(msg.text)}</div>`;
+                } else if (msg.isMine) {
+                    html += `
+                        <div class="chat-msg chat-msg--mine">
+                            <div class="chat-msg__meta">
+                                <b>Tú</b>
+                                <span>${msg.time || ''}</span>
+                            </div>
+                            <div>${escapeHtml(msg.text)}</div>
+                        </div>`;
+                } else {
+                    html += `
+                        <div class="chat-msg chat-msg--theirs">
+                            <div class="chat-msg__meta">
+                                <b>${escapeHtml(msg.sender || 'Compañero')} (${escapeHtml(msg.unidad || '1315')})</b>
+                                <span>${msg.time || ''}</span>
+                            </div>
+                            <div>${escapeHtml(msg.text)}</div>
+                        </div>`;
+                }
+            });
+
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendQuickChat(text) {
+            sendChatText(text);
+        }
+
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const val = input ? input.value.trim() : '';
+            if (!val) return;
+            sendChatText(val);
+            if (input) input.value = '';
+        }
+
+        function sendChatText(text) {
+            if (!text) return;
+            const now = new Date();
+            const timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
+            const myName = appData.metadata.nombre || 'Dotación';
+            const myUnit = appData.metadata.unidad || '1315';
+
+            const newMsg = {
+                id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                text,
+                sender: myName,
+                unidad: myUnit,
+                time: timeStr,
+                isMine: true
+            };
+
+            chatMessages.push(newMsg);
+            renderChatMessages();
+
+            if (!p2pConnected) {
+                toast('⚠️ Mensaje guardado localmente. Conecta una sala P2P para enviarlo al compañero.', false);
+                return;
+            }
+
+            sendMQTTMessage({
+                type: 'CHAT_MSG',
+                text,
+                sender: myName,
+                unidad: myUnit,
+                time: timeStr
+            });
+            hapticPulse();
         }
 
         function toggleP2PAutoSync(val) {
@@ -3875,6 +4155,11 @@ Check list,,20,,5,,15,,sfc
         window.sendFullP2PSync = sendFullP2PSync;
         window.requestFullP2PSync = requestFullP2PSync;
         window.disconnectP2P = disconnectP2P;
+        window.openChatModal = openChatModal;
+        window.closeChatModal = closeChatModal;
+        window.sendQuickChat = sendQuickChat;
+        window.handleChatSubmit = handleChatSubmit;
+        window.sendChatText = sendChatText;
         window.forceUpdateApp = async function() {
             toast('🧹 Limpiando caché y actualizando a la última versión...', false);
             try {
