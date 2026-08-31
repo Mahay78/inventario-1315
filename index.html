@@ -447,21 +447,34 @@
             padding: 2px 6px; border-radius: 999px;
             border: 2px solid var(--surface); line-height: 1;
         }
+        .chat-msg-row {
+            display: flex; gap: 8px; align-items: flex-end; width: 100%;
+            animation: chatPop .15s ease-out;
+        }
+        .chat-msg-row--mine { justify-content: flex-end; }
+        .chat-msg-row--theirs { justify-content: flex-start; }
+        .chat-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 800; color: #ffffff;
+            flex-shrink: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: 1.5px solid var(--surface);
+        }
         .chat-msg {
-            max-width: 82%; padding: 8px 12px; border-radius: 14px;
+            max-width: 80%; padding: 8px 12px; border-radius: 14px;
             display: flex; flex-direction: column; gap: 3px; font-size: 13.5px;
-            word-break: break-word; animation: chatPop .15s ease-out;
+            word-break: break-word;
         }
         @keyframes chatPop {
             from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .chat-msg--mine {
-            align-self: flex-end; background: linear-gradient(135deg, var(--primary), #059669);
+            background: linear-gradient(135deg, var(--primary), #059669);
             color: #ffffff; border-bottom-right-radius: 4px;
         }
         .chat-msg--theirs {
-            align-self: flex-start; background: var(--surface-2);
+            background: var(--surface-2);
             color: var(--text); border: 1px solid var(--border-soft);
             border-bottom-left-radius: 4px;
         }
@@ -470,10 +483,11 @@
             color: var(--text-soft); border: 1px solid var(--border-soft);
             font-size: 11.5px; font-weight: 600; padding: 4px 10px;
             border-radius: 999px; max-width: 92%; text-align: center;
+            margin: 4px auto;
         }
         .chat-msg__meta {
             display: flex; align-items: center; justify-content: space-between;
-            gap: 8px; font-size: 11px; opacity: .85;
+            gap: 8px; font-size: 11px; opacity: .9;
         }
         .chat-msg--mine .chat-msg__meta { color: rgba(255,255,255,.9); }
         .chat-msg--theirs .chat-msg__meta { color: var(--text-faint); }
@@ -1205,17 +1219,28 @@
     <!-- MODAL CHAT DE DOTACIÓN EN VIVO -->
     <div class="overlay" id="chat-modal">
         <div class="sheet" style="max-width:520px;height:84vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
-            <div class="sheet__head" style="padding:14px 18px;border-bottom:1px solid var(--border-soft);margin-bottom:0;background:var(--surface-2);">
+            <div class="sheet__head" style="padding:12px 16px;border-bottom:1px solid var(--border-soft);margin-bottom:0;background:var(--surface-2);">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <div style="font-size:22px;">💬</div>
                     <div>
-                        <div class="sheet__title" style="margin-bottom:2px;font-size:16px;">Chat de Dotación en Vivo</div>
+                        <div class="sheet__title" style="margin-bottom:2px;font-size:15px;">Chat de Dotación en Vivo</div>
                         <div style="font-size:11.5px;color:var(--text-soft);" id="chat-header-status">
                             <span class="p2p-status-dot p2p-status-dot--on" style="display:inline-block;margin-right:4px;"></span> Sala <b id="chat-room-badge">----</b> · En directo
                         </div>
                     </div>
                 </div>
                 <button class="sheet__close" onclick="closeChatModal()">✕</button>
+            </div>
+
+            <!-- Barra de Identidad del Remitente (Quién eres tú) -->
+            <div style="padding:8px 14px;background:var(--surface-3);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;">
+                <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                    <span style="color:var(--text-faint);white-space:nowrap;">👤 Hablas como:</span>
+                    <strong id="chat-my-name-display" style="color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Fran</strong>
+                </div>
+                <button type="button" class="btn btn--ghost" onclick="promptChangeChatName()" style="height:26px;padding:0 8px;font-size:11px;border-radius:6px;flex:none;white-space:nowrap;">
+                    ✏️ Cambiar Nombre
+                </button>
             </div>
 
             <!-- Lista de Mensajes -->
@@ -3752,12 +3777,61 @@ Check list,,20,,5,,15,,sfc
         let unreadChatCount = 0;
         let isChatModalOpen = false;
 
+        function getSenderColor(name) {
+            const colors = ['#10b981', '#0ea5e9', '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#6366f1'];
+            let hash = 0;
+            const str = String(name || 'Dotación').trim().toLowerCase();
+            for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        function getInitials(name) {
+            if (!name) return '??';
+            const clean = name.replace(/[()]/g, '').trim();
+            const parts = clean.split(/\s+/);
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return clean.substring(0, 2).toUpperCase();
+        }
+
+        function getMyChatName() {
+            let name = localStorage.getItem('chat_my_name');
+            if (name && name.trim()) return name.trim();
+            
+            const metaName = (appData.metadata && appData.metadata.nombre) ? appData.metadata.nombre.trim() : '';
+            if (metaName) {
+                const first = metaName.split(/[\/,;-]/)[0].trim();
+                if (first) return first;
+            }
+            return 'Dotación';
+        }
+
+        function setMyChatName(newName) {
+            if (!newName || !newName.trim()) return;
+            localStorage.setItem('chat_my_name', newName.trim());
+            updateChatIdentityUI();
+            toast(`👤 Ahora hablas como "${newName.trim()}" en el chat.`, false);
+        }
+
+        function promptChangeChatName() {
+            const current = getMyChatName();
+            const res = prompt('Introduce tu nombre o rol en la dotación (ej: Fran, Roberto, Conductor, DUE):', current);
+            if (res !== null && res.trim()) {
+                setMyChatName(res.trim());
+            }
+        }
+
+        function updateChatIdentityUI() {
+            const nameEl = document.getElementById('chat-my-name-display');
+            if (nameEl) nameEl.textContent = getMyChatName();
+        }
+
         function openChatModal() {
             const modal = document.getElementById('chat-modal');
             if (modal) modal.classList.add('is-open');
             isChatModalOpen = true;
             unreadChatCount = 0;
             updateChatBadgeUI();
+            updateChatIdentityUI();
             
             const badge = document.getElementById('chat-room-badge');
             if (badge) badge.textContent = p2pShortCode || '----';
@@ -3818,22 +3892,30 @@ Check list,,20,,5,,15,,sfc
                 if (msg.isSystem) {
                     html += `<div class="chat-msg chat-msg--system">${escapeHtml(msg.text)}</div>`;
                 } else if (msg.isMine) {
+                    const myCol = getSenderColor(msg.sender);
                     html += `
-                        <div class="chat-msg chat-msg--mine">
-                            <div class="chat-msg__meta">
-                                <b>Tú</b>
-                                <span>${msg.time || ''}</span>
+                        <div class="chat-msg-row chat-msg-row--mine">
+                            <div class="chat-msg chat-msg--mine">
+                                <div class="chat-msg__meta">
+                                    <span style="font-weight:700;">Tú (${escapeHtml(msg.sender || 'Tú')})</span>
+                                    <span>${msg.time || ''}</span>
+                                </div>
+                                <div style="font-size:13.5px;font-weight:500;">${escapeHtml(msg.text)}</div>
                             </div>
-                            <div>${escapeHtml(msg.text)}</div>
+                            <div class="chat-avatar" style="background:${myCol};" title="${escapeHtml(msg.sender)}">${getInitials(msg.sender)}</div>
                         </div>`;
                 } else {
+                    const theirCol = getSenderColor(msg.sender);
                     html += `
-                        <div class="chat-msg chat-msg--theirs">
-                            <div class="chat-msg__meta">
-                                <b>${escapeHtml(msg.sender || 'Compañero')} (${escapeHtml(msg.unidad || '1315')})</b>
-                                <span>${msg.time || ''}</span>
+                        <div class="chat-msg-row chat-msg-row--theirs">
+                            <div class="chat-avatar" style="background:${theirCol};" title="${escapeHtml(msg.sender)}">${getInitials(msg.sender)}</div>
+                            <div class="chat-msg chat-msg--theirs">
+                                <div class="chat-msg__meta">
+                                    <span style="font-weight:800;color:${theirCol};">👤 ${escapeHtml(msg.sender || 'Compañero')} <small style="font-weight:600;opacity:0.75;">(U.${escapeHtml(msg.unidad || '1315')})</small></span>
+                                    <span>${msg.time || ''}</span>
+                                </div>
+                                <div style="font-size:13.5px;font-weight:500;">${escapeHtml(msg.text)}</div>
                             </div>
-                            <div>${escapeHtml(msg.text)}</div>
                         </div>`;
                 }
             });
@@ -3859,7 +3941,7 @@ Check list,,20,,5,,15,,sfc
             if (!text) return;
             const now = new Date();
             const timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
-            const myName = appData.metadata.nombre || 'Dotación';
+            const myName = getMyChatName();
             const myUnit = appData.metadata.unidad || '1315';
 
             const newMsg = {
@@ -4160,6 +4242,9 @@ Check list,,20,,5,,15,,sfc
         window.sendQuickChat = sendQuickChat;
         window.handleChatSubmit = handleChatSubmit;
         window.sendChatText = sendChatText;
+        window.promptChangeChatName = promptChangeChatName;
+        window.setMyChatName = setMyChatName;
+        window.getMyChatName = getMyChatName;
         window.forceUpdateApp = async function() {
             toast('🧹 Limpiando caché y actualizando a la última versión...', false);
             try {
