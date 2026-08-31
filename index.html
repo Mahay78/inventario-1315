@@ -1771,6 +1771,7 @@ Check list,,20,,5,,15,,sfc
             if (typeof broadcastP2PUpdate === 'function') {
                 broadcastP2PUpdate('DELTA_STOCK', {
                     index,
+                    material: item.material,
                     currentStock: item.currentStock,
                     order: item.order
                 });
@@ -3295,7 +3296,7 @@ Check list,,20,,5,,15,,sfc
             }
 
             p2pCurrentTopic = `svb1315/p2p/${roomCode}`;
-            const broker = P2P_MQTT_BROKERS[mqttBrokerIndex % P2P_MQTT_BROKERS.length];
+            const broker = P2P_MQTT_BROKERS[0]; // Broker primario EMQX
             p2pClientId = 'svb_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
 
             try {
@@ -3308,7 +3309,7 @@ Check list,,20,,5,,15,,sfc
                         updateP2PStatusUI('connecting');
                         setTimeout(() => {
                             if (p2pShortCode) initMQTTClient(p2pShortCode, role);
-                        }, 1500);
+                        }, 1200);
                     }
                 };
 
@@ -3329,49 +3330,33 @@ Check list,,20,,5,,15,,sfc
                     cleanSession: true,
                     onSuccess: () => {
                         console.log(`Conectado a MQTT (${broker.host}) en sala ${roomCode}`);
-                        mqttClient.subscribe(p2pCurrentTopic, { qos: 1 });
+                        mqttClient.subscribe(p2pCurrentTopic, { qos: 0 });
                         
                         if (role === 'host') {
                             renderP2PHostUI(true);
                         } else if (role === 'client') {
-                            p2pConnected = true;
-                            if (p2pConnectTimeout) {
-                                clearTimeout(p2pConnectTimeout);
-                                p2pConnectTimeout = null;
-                            }
                             stopP2PQRScan();
                             const un = appData.metadata.unidad || '1315';
                             const nom = appData.metadata.nombre || 'Dotación';
                             
+                            // Enviar Handshake al Anfitrión
                             sendMQTTMessage({
                                 type: 'HANDSHAKE',
                                 unidad: un,
-                                nombre: nom,
-                                role: 'client'
+                                nombre: nom
                             });
-
-                            updateP2PStatusUI('connected', `Enlazado con sala ${roomCode}`);
-                            hapticPulse();
-                            toast('🟢 ¡Conectado con tu compañero!', false);
-
-                            setTimeout(() => requestFullP2PSync(), 300);
                         }
 
                         if (onSuccessCallback) onSuccessCallback();
                     },
                     onFailure: (err) => {
                         console.warn(`Fallo conectando con ${broker.host}:`, err);
-                        mqttBrokerIndex++;
-                        if (mqttBrokerIndex < P2P_MQTT_BROKERS.length * 2) {
-                            setTimeout(() => initMQTTClient(roomCode, role, onSuccessCallback), 800);
-                        } else {
-                            if (p2pConnectTimeout) {
-                                clearTimeout(p2pConnectTimeout);
-                                p2pConnectTimeout = null;
-                            }
-                            toast('No se pudo conectar con el servidor de salas. Revisa tu conexión a internet.', false);
-                            updateP2PStatusUI('off');
+                        if (p2pConnectTimeout) {
+                            clearTimeout(p2pConnectTimeout);
+                            p2pConnectTimeout = null;
                         }
+                        toast('No se pudo conectar con el servidor en tiempo real. Revisa tu conexión.', false);
+                        updateP2PStatusUI('off');
                     }
                 };
 
@@ -3393,7 +3378,7 @@ Check list,,20,,5,,15,,sfc
                 };
                 const msg = new Paho.MQTT.Message(JSON.stringify(packet));
                 msg.destinationName = p2pCurrentTopic;
-                msg.qos = 1;
+                msg.qos = 0;
                 mqttClient.send(msg);
             } catch(e) {
                 console.warn("Error enviando por MQTT:", e);
@@ -3459,7 +3444,7 @@ Check list,,20,,5,,15,,sfc
             if (p2pConnectTimeout) clearTimeout(p2pConnectTimeout);
             p2pConnectTimeout = setTimeout(() => {
                 if (!p2pConnected) {
-                    toast('⚠️ Tiempo de espera agotado. Verifica que el otro teléfono tenga la app abierta en "Crear Sala".', false);
+                    toast('⚠️ No se recibió respuesta de la sala. Verifica que el anfitrión tenga la app abierta.', false);
                     updateP2PStatusUI('off');
                 }
             }, 12000);
@@ -3476,28 +3461,67 @@ Check list,,20,,5,,15,,sfc
                     clearTimeout(p2pConnectTimeout);
                     p2pConnectTimeout = null;
                 }
-                const peerDesc = `Enlazado con ${data.nombre || 'Compañero'} (Unidad ${data.unidad || '1315'})`;
+                const peerName = data.nombre || 'Compañero';
+                const peerUnit = data.unidad || '1315';
+                const peerDesc = `Enlazado con ${peerName} (Unidad ${peerUnit})`;
                 updateP2PStatusUI('connected', peerDesc);
                 hapticPulse();
                 toast(`🟢 ${peerDesc}`, false);
 
-                // Si somos el Host y el cliente nos saluda, le enviamos el inventario completo
-                if (role === 'host' || data.role === 'client') {
-                    setTimeout(() => sendFullP2PSync(true), 250);
+                // Responder al compañero con Handshake ACK y transmitir el inventario completo
+                sendMQTTMessage({
+                    type: 'HANDSHAKE_ACK',
+                    nombre: appData.metadata.nombre || 'Anfitrión',
+                    unidad: appData.metadata.unidad || '1315',
+                    appData
+                });
+                return;
+            }
+
+            if (data.type === 'HANDSHAKE_ACK' || data.type === 'FULL_SYNC') {
+                p2pConnected = true;
+                if (p2pConnectTimeout) {
+                    clearTimeout(p2pConnectTimeout);
+                    p2pConnectTimeout = null;
+                }
+                if (data.appData && Array.isArray(data.appData.inventory)) {
+                    isRemoteUpdate = true;
+                    recordSnapshot();
+                    appData = {
+                        metadata: Object.assign({}, appData.metadata, data.appData.metadata || {}),
+                        inventory: data.appData.inventory,
+                        monthlyOrders: data.appData.monthlyOrders || appData.monthlyOrders || []
+                    };
+                    saveData();
+                    renderAll();
+                    isRemoteUpdate = false;
+                    hapticPulse();
+
+                    const senderName = data.nombre || data.sender || 'Compañero';
+                    const unitName = data.unidad || appData.metadata.unidad || '1315';
+                    updateP2PStatusUI('connected', `Enlazado con ${senderName} (Unidad ${unitName})`);
+                    toast(`⚡ Inventario actualizado con éxito (${appData.inventory.length} insumos de ${senderName})`, false);
                 }
                 return;
             }
 
             if (data.type === 'DELTA_STOCK') {
-                if (data.index !== undefined && appData.inventory[data.index]) {
+                let targetItem = null;
+                if (data.material) {
+                    targetItem = appData.inventory.find(i => i.material.trim().toLowerCase() === data.material.trim().toLowerCase());
+                }
+                if (!targetItem && data.index !== undefined && appData.inventory[data.index]) {
+                    targetItem = appData.inventory[data.index];
+                }
+                if (targetItem) {
                     isRemoteUpdate = true;
-                    appData.inventory[data.index].currentStock = data.currentStock;
-                    appData.inventory[data.index].order = data.order;
+                    targetItem.currentStock = Number(data.currentStock) || 0;
+                    targetItem.order = data.order !== undefined ? Number(data.order) : Math.max(0, targetItem.idealStock - targetItem.currentStock);
                     saveData();
                     renderAll();
                     isRemoteUpdate = false;
                     hapticPulse();
-                    toast(`🔄 ${appData.inventory[data.index].material}: ${data.currentStock} uds (${data.sender || 'Pareja'})`, false);
+                    toast(`🔄 ${targetItem.material}: ${targetItem.currentStock} uds (${data.sender || 'Compañero'})`, false);
                 }
                 return;
             }
@@ -3512,7 +3536,7 @@ Check list,,20,,5,,15,,sfc
                 saveData();
                 renderAll();
                 isRemoteUpdate = false;
-                toast(`✏️ Insumo actualizado por ${data.sender || 'compañero'}: ${data.item?.material || ''}`, false);
+                toast(`✏️ Insumo modificado por ${data.sender || 'compañero'}: ${data.item?.material || ''}`, false);
                 return;
             }
 
@@ -3523,20 +3547,6 @@ Check list,,20,,5,,15,,sfc
                 renderAll();
                 isRemoteUpdate = false;
                 toast(`🔄 Pedido mensual actualizado por ${data.sender || 'compañero'}`, false);
-                return;
-            }
-
-            if (data.type === 'FULL_SYNC') {
-                if (data.appData && Array.isArray(data.appData.inventory)) {
-                    isRemoteUpdate = true;
-                    recordSnapshot();
-                    appData = data.appData;
-                    saveData();
-                    renderAll();
-                    isRemoteUpdate = false;
-                    hapticPulse();
-                    toast(`⚡ Inventario sincronizado con el compañero.`, false);
-                }
                 return;
             }
 
