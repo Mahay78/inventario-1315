@@ -1,5 +1,5 @@
 // Service Worker para Control de Armario Pro
-const CACHE_NAME = 'armario-pro-v5';
+const CACHE_NAME = 'armario-pro-v6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js',
   'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'
 ];
 
