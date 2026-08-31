@@ -498,6 +498,25 @@
         }
         .quick-chip:active { background: var(--primary-dim); color: var(--primary); }
 
+        /* Multi-Unidad Selector */
+        .unit-badge-btn {
+            background: var(--surface-2); border: 1px solid var(--border);
+            color: var(--primary); font-weight: 800; font-size: 11.5px;
+            padding: 2px 8px; border-radius: 999px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 4px;
+            transition: background .15s, transform .08s;
+        }
+        .unit-badge-btn:active { transform: scale(0.95); background: var(--primary-dim); }
+        .unit-card-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--surface-2); border: 1px solid var(--border-soft);
+            border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+            transition: border-color .15s, background .15s;
+        }
+        .unit-card-item.is-active {
+            border-color: var(--primary); background: var(--primary-dim);
+        }
+
         html[data-theme="dark"] {
             --accent:        #22d3ee;
             --accent-dim:    rgba(34, 211, 238, .14);
@@ -554,7 +573,7 @@
             </div>
             <div class="topbar__titles">
                 <div class="topbar__title">Control de Armario Pro</div>
-                <div class="topbar__sub"><span class="status-dot"></span> Unidad <span id="topbar-unidad">1315</span> · <span id="clock">16:00</span></div>
+                <div class="topbar__sub"><span class="status-dot"></span> <button type="button" class="unit-badge-btn" onclick="openUnitSwitchModal()" title="Cambiar de Ambulancia / Unidad">🚑 Unidad <b id="topbar-unidad">1315</b> ▾</button> · <span id="clock">16:00</span></div>
             </div>
         </div>
         <div class="topbar__actions">
@@ -1272,6 +1291,39 @@
         </div>
     </div>
 
+    <!-- MODAL SELECTOR MULTI-UNIDAD -->
+    <div class="overlay" id="unit-switch-modal">
+        <div class="sheet" style="max-width:480px;">
+            <div class="sheet__head">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="font-size:24px;">🚑</div>
+                    <div>
+                        <div class="sheet__title" style="margin-bottom:2px;font-size:16px;">Flota de Unidades / Ambulancias</div>
+                        <div style="font-size:12px;color:var(--text-soft);">Gestiona inventarios independientes por vehículo</div>
+                    </div>
+                </div>
+                <button class="sheet__close" onclick="closeUnitSwitchModal()">✕</button>
+            </div>
+            
+            <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;line-height:1.4;">
+                Selecciona la unidad activa o añade una nueva para gestionar su stock y pedidos por separado.
+            </p>
+
+            <div id="unit-list-container" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:48vh;overflow-y:auto;padding-right:4px;">
+                <!-- Lista dinámica de unidades -->
+            </div>
+
+            <div style="display:flex;gap:8px;">
+                <button type="button" class="btn btn--primary" onclick="openCreateUnitPrompt()">
+                    ➕ Añadir Nueva Unidad
+                </button>
+                <button type="button" class="btn btn--ghost" onclick="closeUnitSwitchModal()">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- BOTÓN FLOTANTE DE CHAT -->
     <button type="button" class="floating-chat-btn" id="floating-chat-btn" onclick="openChatModal()" title="Abrir Chat de Dotación">
         <span>💬</span>
@@ -1481,13 +1533,18 @@ Check list,,20,,5,,15,,sfc
         }
 
         function loadData() {
+            const lastActiveUnit = localStorage.getItem('active_unit_name');
             appData = parseCSV(csvData);
+            if (lastActiveUnit) {
+                appData.metadata.unidad = lastActiveUnit;
+            }
             const saved = localStorage.getItem(getStorageKey()) || localStorage.getItem('inventoryData_1315');
             if (saved) {
                 try {
                     const p = JSON.parse(saved);
                     if (p && p.inventory && Array.isArray(p.inventory)) {
                         appData.metadata = Object.assign(appData.metadata, p.metadata || {});
+                        if (lastActiveUnit) appData.metadata.unidad = lastActiveUnit;
                         appData.inventory = p.inventory;
                         if (Array.isArray(p.monthlyOrders)) appData.monthlyOrders = p.monthlyOrders;
                     }
@@ -1513,7 +1570,181 @@ Check list,,20,,5,,15,,sfc
 
         function saveData() {
             appData.version = Date.now();
+            const currUnit = (appData.metadata && appData.metadata.unidad) ? appData.metadata.unidad.trim() : '1315';
+            localStorage.setItem('active_unit_name', currUnit);
             localStorage.setItem(getStorageKey(), JSON.stringify(appData));
+        }
+
+        // ============================================================
+        //  GESTIÓN MULTI-UNIDAD / FLOTA DE AMBULANCIAS
+        // ============================================================
+        function getRegisteredUnits() {
+            try {
+                const saved = localStorage.getItem('registered_units_list');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) return [...new Set(parsed)];
+                }
+            } catch(e) {}
+            return ['1315', '1316', '1402'];
+        }
+
+        function saveRegisteredUnits(units) {
+            localStorage.setItem('registered_units_list', JSON.stringify([...new Set(units)]));
+        }
+
+        function openUnitSwitchModal() {
+            const modal = document.getElementById('unit-switch-modal');
+            if (modal) modal.classList.add('is-open');
+            renderUnitList();
+        }
+
+        function closeUnitSwitchModal() {
+            const modal = document.getElementById('unit-switch-modal');
+            if (modal) modal.classList.remove('is-open');
+        }
+
+        function renderUnitList() {
+            const container = document.getElementById('unit-list-container');
+            if (!container) return;
+
+            const units = getRegisteredUnits();
+            const currentUnit = (appData.metadata && appData.metadata.unidad) ? appData.metadata.unidad.trim() : '1315';
+            
+            // Asegurar que la unidad activa está en la lista registrada
+            if (!units.includes(currentUnit)) {
+                units.unshift(currentUnit);
+                saveRegisteredUnits(units);
+            }
+
+            let html = '';
+            units.forEach(u => {
+                const isActive = (u === currentUnit);
+                const storageKey = `inventoryData_armario_${u}`;
+                let countItems = 0;
+                try {
+                    const raw = localStorage.getItem(storageKey);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && Array.isArray(parsed.inventory)) countItems = parsed.inventory.length;
+                    }
+                } catch(e) {}
+
+                if (!countItems && isActive) countItems = appData.inventory.length;
+
+                html += `
+                    <div class="unit-card-item ${isActive ? 'is-active' : ''}">
+                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                            <span style="font-size:22px;flex:none;">🚑</span>
+                            <div style="min-width:0;">
+                                <div style="font-weight:800;font-size:15px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <span>Unidad ${escapeHtml(u)}</span>
+                                    ${isActive ? '<span style="font-size:10px;background:var(--ok);color:#fff;padding:2px 6px;border-radius:999px;font-weight:700;">ACTIVA</span>' : ''}
+                                </div>
+                                <div style="font-size:12px;color:var(--text-soft);">
+                                    ${countItems ? countItems + ' insumos en stock' : 'Plantilla base oficial'}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:center;flex:none;">
+                            ${!isActive ? `
+                                <button type="button" class="btn btn--primary" style="height:34px;padding:0 12px;font-size:12px;border-radius:8px;" onclick="switchActiveUnit('${escapeHtml(u)}')">
+                                    Seleccionar
+                                </button>
+                                ${units.length > 1 ? `
+                                    <button type="button" class="btn btn--ghost" style="height:34px;width:34px;padding:0;font-size:13px;border-radius:8px;color:var(--danger);" onclick="deleteUnitFromList('${escapeHtml(u)}')" title="Eliminar de la lista">
+                                        🗑️
+                                    </button>
+                                ` : ''}
+                            ` : `
+                                <span style="font-size:12px;font-weight:700;color:var(--ok);padding:0 6px;">En uso</span>
+                            `}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function switchActiveUnit(targetUnit) {
+            if (!targetUnit || !targetUnit.trim()) return;
+            const newUnit = targetUnit.trim();
+            const currentUnit = (appData.metadata && appData.metadata.unidad) ? appData.metadata.unidad.trim() : '1315';
+
+            if (newUnit === currentUnit) {
+                closeUnitSwitchModal();
+                return;
+            }
+
+            // 1. Guardar datos de la unidad actual antes de cambiar
+            saveData();
+
+            // 2. Cambiar metadato de unidad
+            appData.metadata.unidad = newUnit;
+
+            // 3. Cargar datos de la nueva unidad si existen
+            const savedRaw = localStorage.getItem(`inventoryData_armario_${newUnit}`);
+            if (savedRaw) {
+                try {
+                    const parsed = JSON.parse(savedRaw);
+                    if (parsed && Array.isArray(parsed.inventory)) {
+                        appData = parsed;
+                        appData.metadata.unidad = newUnit;
+                    }
+                } catch(e) {
+                    console.warn("Error cargando unidad:", e);
+                }
+            } else {
+                // Si no existía, inicializar con plantilla base limpia
+                const base = parseCSV(csvData);
+                base.metadata.unidad = newUnit;
+                base.metadata.fecha = appData.metadata.fecha || '';
+                base.metadata.nombre = appData.metadata.nombre || '';
+                appData = base;
+            }
+
+            // 4. Asegurar persistencia y refresco
+            saveData();
+            renderAll();
+            closeUnitSwitchModal();
+            hapticPulse();
+            toast(`🚑 Cambiado a Unidad ${newUnit}. Inventario cargado.`, true);
+
+            // 5. Si P2P está conectado, notificar la unidad
+            if (p2pConnected && typeof broadcastP2PUpdate === 'function') {
+                broadcastP2PUpdate('HANDSHAKE', {
+                    unidad: newUnit,
+                    nombre: appData.metadata.nombre || 'Dotación'
+                });
+            }
+        }
+
+        function openCreateUnitPrompt() {
+            const res = prompt('Introduce el número o nombre de la nueva unidad (ej: 1318, 1405, SVA-02, VIR-01):');
+            if (!res || !res.trim()) return;
+            const clean = res.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '');
+            if (!clean) {
+                toast('Nombre de unidad no válido.', false);
+                return;
+            }
+
+            const units = getRegisteredUnits();
+            if (!units.includes(clean)) {
+                units.push(clean);
+                saveRegisteredUnits(units);
+            }
+
+            switchActiveUnit(clean);
+        }
+
+        function deleteUnitFromList(unitToDelete) {
+            if (!confirm(`¿Eliminar la Unidad ${unitToDelete} de la lista rápida? (Los datos guardados se conservarán en este dispositivo).`)) return;
+            let units = getRegisteredUnits().filter(u => u !== unitToDelete);
+            if (!units.length) units = ['1315'];
+            saveRegisteredUnits(units);
+            renderUnitList();
+            toast(`Unidad ${unitToDelete} eliminada de la lista rápida.`, false);
         }
 
         function stateOf(item) {
@@ -4241,10 +4472,15 @@ Check list,,20,,5,,15,,sfc
         window.closeChatModal = closeChatModal;
         window.sendQuickChat = sendQuickChat;
         window.handleChatSubmit = handleChatSubmit;
-        window.sendChatText = sendChatText;
         window.promptChangeChatName = promptChangeChatName;
         window.setMyChatName = setMyChatName;
         window.getMyChatName = getMyChatName;
+        window.openUnitSwitchModal = openUnitSwitchModal;
+        window.closeUnitSwitchModal = closeUnitSwitchModal;
+        window.switchActiveUnit = switchActiveUnit;
+        window.openCreateUnitPrompt = openCreateUnitPrompt;
+        window.deleteUnitFromList = deleteUnitFromList;
+        window.getRegisteredUnits = getRegisteredUnits;
         window.forceUpdateApp = async function() {
             toast('🧹 Limpiando caché y actualizando a la última versión...', false);
             try {
