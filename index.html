@@ -1140,6 +1140,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" integrity="sha384-QQBwnzmpf8eCm7WvgJ/dpvJ51cajsTkfDMgOq5QVBZav9687X5xjlZo8zroLyU3+" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
     <script>
@@ -3099,42 +3100,15 @@ Check list,,20,,5,,15,,sfc
         }
 
         // ============================================================
-        //  SINCRONIZACIÓN P2P EN VIVO (WebRTC) · Conectividad Robusta
+        //  SINCRONIZACIÓN EN VIVO ULTRA-ROBUSTA (MQTT WSS Real-Time)
         // ============================================================
-        const P2P_ICE_SERVERS = [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' },
-            { urls: 'stun:stun.services.mozilla.com' },
-            { urls: 'stun:global.stun.twilio.com:3478' },
-            { urls: 'stun:stun.relay.metered.ca:80' },
-            {
-                urls: 'turn:openrelay.metered.ca:80',
-                username: 'openrelay',
-                credential: 'openrelay'
-            },
-            {
-                urls: 'turn:openrelay.metered.ca:443',
-                username: 'openrelay',
-                credential: 'openrelay'
-            },
-            {
-                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                username: 'openrelay',
-                credential: 'openrelay'
-            },
-            {
-                urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-                username: 'openrelay',
-                credential: 'openrelay'
-            }
+        const P2P_MQTT_BROKERS = [
+            { host: 'broker.emqx.io', port: 8084, path: '/mqtt' },
+            { host: 'broker.hivemq.com', port: 8884, path: '/mqtt' }
         ];
 
-        let p2pPeer = null;
-        let p2pConn = null;
-        let p2pMyId = '';
+        let mqttClient = null;
+        let mqttBrokerIndex = 0;
         let p2pShortCode = '';
         let p2pConnected = false;
         let p2pAutoSync = true;
@@ -3143,23 +3117,19 @@ Check list,,20,,5,,15,,sfc
         let p2pQRScanActive = false;
         let p2pVideoTrack = null;
         let p2pConnectTimeout = null;
+        let p2pClientId = 'svb_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+        let p2pCurrentTopic = '';
 
-        function normalizePeerCode(input) {
+        function getCleanRoomCode(input) {
             if (!input) return '';
             let val = String(input).trim();
             if (val.includes('#p2p=')) {
                 val = val.split('#p2p=')[1].trim();
             }
-            if (val.startsWith('armario1315-')) return val;
-            if (val.startsWith('armario-1315-')) return val.replace('armario-1315-', 'armario1315-');
-            if (val.startsWith('armario-')) return val;
-            
-            // Si el usuario introduce solo números (ej: 4821 o 1315-4821)
+            val = val.replace('armario1315-', '').replace('armario-1315-', '').replace('armario-', '');
             const cleanDigits = val.replace(/[^0-9]/g, '');
-            if (cleanDigits.length === 4) {
-                return `armario1315-${cleanDigits}`;
-            }
-            return `armario1315-${val.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+            if (cleanDigits.length === 4) return cleanDigits;
+            return val.replace(/[^a-zA-Z0-9_-]/g, '');
         }
 
         function generateP2PShortCode() {
@@ -3191,7 +3161,7 @@ Check list,,20,,5,,15,,sfc
                     panelBadge.style.background = 'var(--ok-soft)';
                     panelBadge.style.color = 'var(--ok)';
                     panelBadge.style.borderColor = 'var(--ok)';
-                    panelBadge.textContent = '🟢 En Directo (P2P)';
+                    panelBadge.textContent = '🟢 En Directo';
                 } else if (state === 'connecting') {
                     panelBadge.style.background = 'var(--warn-soft)';
                     panelBadge.style.color = 'var(--warn)';
@@ -3262,64 +3232,24 @@ Check list,,20,,5,,15,,sfc
             if (modal) modal.classList.remove('is-open');
         }
 
-        let p2pCandidates = [];
-        let p2pCandidateIdx = 0;
-
-        function getCandidatePeerIds(rawTarget) {
-            if (!rawTarget) return [];
-            let val = String(rawTarget).trim();
-            if (val.includes('#p2p=')) {
-                val = val.split('#p2p=')[1].trim();
-            }
-            
-            const cleanDigits = val.replace(/[^0-9]/g, '');
-            const cleanCode = val.replace(/[^a-zA-Z0-9_-]/g, '');
-
-            const list = [];
-            
-            // Si tiene 4 dígitos (ej: 4821)
-            if (cleanDigits.length === 4) {
-                list.push(`armario1315-${cleanDigits}`);
-                list.push(`armario-1315-${cleanDigits}`);
-                list.push(`armario-${cleanDigits}`);
-                list.push(cleanDigits);
-            }
-
-            if (val.startsWith('armario-1315-')) {
-                list.unshift(val);
-                list.push(val.replace('armario-1315-', 'armario1315-'));
-            } else if (val.startsWith('armario1315-')) {
-                list.unshift(val);
-                list.push(val.replace('armario1315-', 'armario-1315-'));
-            } else if (val.startsWith('armario-')) {
-                list.unshift(val);
-            } else if (cleanCode) {
-                if (!list.includes(`armario1315-${cleanCode}`)) list.push(`armario1315-${cleanCode}`);
-                if (!list.includes(`armario-1315-${cleanCode}`)) list.push(`armario-1315-${cleanCode}`);
-                if (!list.includes(cleanCode)) list.push(cleanCode);
-            }
-
-            return [...new Set(list)];
-        }
-
         function renderP2PHostUI(isOnline = false) {
             const codeEl = document.getElementById('p2p-my-code');
             const statusEl = document.getElementById('p2p-host-status');
             const qrcEl = document.getElementById('p2p-qrcode-canvas');
 
-            if (codeEl) codeEl.textContent = p2pShortCode;
+            if (codeEl) codeEl.textContent = p2pShortCode || '----';
             if (statusEl) {
                 if (isOnline) {
-                    statusEl.innerHTML = '🟢 <strong style="color:var(--ok);">Sala lista y en línea</strong><br><span style="font-size:11px;color:var(--text-soft);">Tu compañero ya puede introducir este código o escanear el QR.</span>';
+                    statusEl.innerHTML = '🟢 <strong style="color:var(--ok);">Sala lista y en línea</strong><br><span style="font-size:11.5px;color:var(--text-soft);">Tu compañero ya puede introducir el código <b>' + p2pShortCode + '</b> o escanear el QR.</span>';
                 } else {
-                    statusEl.innerHTML = '⏳ <span style="color:var(--warn);">Conectando con el servidor de salas...</span>';
+                    statusEl.innerHTML = '⏳ <span style="color:var(--warn);">Conectando con el servidor en tiempo real...</span>';
                 }
             }
 
-            if (qrcEl) {
+            if (qrcEl && p2pShortCode) {
                 qrcEl.innerHTML = '';
                 const baseUrl = window.location.href.split('#')[0];
-                const p2pUrl = `${baseUrl}#p2p=${p2pMyId}`;
+                const p2pUrl = `${baseUrl}#p2p=${p2pShortCode}`;
 
                 let generated = false;
                 try {
@@ -3348,38 +3278,123 @@ Check list,,20,,5,,15,,sfc
             }
         }
 
-        function handlePeerError(err) {
-            console.warn("PeerJS error:", err);
-            if (err.type === 'unavailable-id') {
-                if (p2pViewMode === 'host') {
-                    startP2PHost(true);
-                }
+        function initMQTTClient(roomCode, role = 'host', onSuccessCallback = null) {
+            if (typeof Paho === 'undefined' || !Paho.MQTT) {
+                toast('Librería de sincronización en tiempo real no cargada.', false);
                 return;
             }
 
-            if (err.type === 'peer-unavailable') {
-                // Si estamos buscando como cliente, probamos el siguiente formato de ID candidato
-                if (p2pCandidates.length > 0 && p2pCandidateIdx < p2pCandidates.length - 1) {
-                    p2pCandidateIdx++;
-                    console.log(`Reintentando con candidato alternativo ${p2pCandidateIdx}: ${p2pCandidates[p2pCandidateIdx]}`);
-                    tryConnectCurrentCandidate();
-                    return;
-                }
-                if (p2pConnectTimeout) {
-                    clearTimeout(p2pConnectTimeout);
-                    p2pConnectTimeout = null;
-                }
-                toast('⚠️ No se encontró al compañero. Comprueba que el código siga en su pantalla.', false);
+            if (mqttClient) {
+                try {
+                    mqttClient.disconnect();
+                } catch(e) {}
+                mqttClient = null;
+            }
+
+            p2pCurrentTopic = `svb1315/p2p/${roomCode}`;
+            const broker = P2P_MQTT_BROKERS[mqttBrokerIndex % P2P_MQTT_BROKERS.length];
+            p2pClientId = 'svb_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+
+            try {
+                mqttClient = new Paho.MQTT.Client(broker.host, broker.port, broker.path, p2pClientId);
+
+                mqttClient.onConnectionLost = (responseObject) => {
+                    console.warn("MQTT Connection Lost:", responseObject);
+                    if (p2pConnected) {
+                        toast('Reconectando canal en vivo...', false);
+                        updateP2PStatusUI('connecting');
+                        setTimeout(() => {
+                            if (p2pShortCode) initMQTTClient(p2pShortCode, role);
+                        }, 1500);
+                    }
+                };
+
+                mqttClient.onMessageArrived = (message) => {
+                    try {
+                        const payload = JSON.parse(message.payloadString);
+                        if (payload.senderId === p2pClientId) return;
+                        handleP2PData(payload, role);
+                    } catch(e) {
+                        console.error("Error parseando mensaje MQTT:", e);
+                    }
+                };
+
+                const connectOptions = {
+                    useSSL: true,
+                    timeout: 8,
+                    keepAliveInterval: 30,
+                    cleanSession: true,
+                    onSuccess: () => {
+                        console.log(`Conectado a MQTT (${broker.host}) en sala ${roomCode}`);
+                        mqttClient.subscribe(p2pCurrentTopic, { qos: 1 });
+                        
+                        if (role === 'host') {
+                            renderP2PHostUI(true);
+                        } else if (role === 'client') {
+                            p2pConnected = true;
+                            if (p2pConnectTimeout) {
+                                clearTimeout(p2pConnectTimeout);
+                                p2pConnectTimeout = null;
+                            }
+                            stopP2PQRScan();
+                            const un = appData.metadata.unidad || '1315';
+                            const nom = appData.metadata.nombre || 'Dotación';
+                            
+                            sendMQTTMessage({
+                                type: 'HANDSHAKE',
+                                unidad: un,
+                                nombre: nom,
+                                role: 'client'
+                            });
+
+                            updateP2PStatusUI('connected', `Enlazado con sala ${roomCode}`);
+                            hapticPulse();
+                            toast('🟢 ¡Conectado con tu compañero!', false);
+
+                            setTimeout(() => requestFullP2PSync(), 300);
+                        }
+
+                        if (onSuccessCallback) onSuccessCallback();
+                    },
+                    onFailure: (err) => {
+                        console.warn(`Fallo conectando con ${broker.host}:`, err);
+                        mqttBrokerIndex++;
+                        if (mqttBrokerIndex < P2P_MQTT_BROKERS.length * 2) {
+                            setTimeout(() => initMQTTClient(roomCode, role, onSuccessCallback), 800);
+                        } else {
+                            if (p2pConnectTimeout) {
+                                clearTimeout(p2pConnectTimeout);
+                                p2pConnectTimeout = null;
+                            }
+                            toast('No se pudo conectar con el servidor de salas. Revisa tu conexión a internet.', false);
+                            updateP2PStatusUI('off');
+                        }
+                    }
+                };
+
+                mqttClient.connect(connectOptions);
+            } catch(err) {
+                console.error("Error creando cliente MQTT:", err);
+                toast('Error en el motor de sincronización.', false);
                 updateP2PStatusUI('off');
-                return;
             }
+        }
 
-            if (p2pConnectTimeout) {
-                clearTimeout(p2pConnectTimeout);
-                p2pConnectTimeout = null;
+        function sendMQTTMessage(data) {
+            if (!mqttClient || !mqttClient.isConnected() || !p2pCurrentTopic) return;
+            try {
+                const packet = {
+                    ...data,
+                    senderId: p2pClientId,
+                    timestamp: Date.now()
+                };
+                const msg = new Paho.MQTT.Message(JSON.stringify(packet));
+                msg.destinationName = p2pCurrentTopic;
+                msg.qos = 1;
+                mqttClient.send(msg);
+            } catch(e) {
+                console.warn("Error enviando por MQTT:", e);
             }
-            toast(`Aviso P2P: ${err.message || err.type}`, false);
-            updateP2PStatusUI('off');
         }
 
         function startP2PHost(forceNew = false) {
@@ -3388,58 +3403,19 @@ Check list,,20,,5,,15,,sfc
                 p2pConnectTimeout = null;
             }
 
-            if (p2pPeer && !p2pPeer.destroyed && p2pPeer.open && !forceNew && p2pMyId) {
-                renderP2PHostUI(true);
-                return;
+            if (!p2pShortCode || forceNew) {
+                p2pShortCode = generateP2PShortCode();
             }
-            if (typeof Peer === 'undefined') {
-                toast('Cargando soporte WebRTC P2P...', false);
-                return;
-            }
-
-            p2pShortCode = generateP2PShortCode();
-            p2pMyId = `armario1315-${p2pShortCode}`;
 
             updateP2PStatusUI('connecting');
             renderP2PHostUI(false);
 
-            try {
-                if (p2pPeer && !p2pPeer.destroyed) {
-                    try { p2pPeer.destroy(); } catch(e) {}
-                }
-
-                p2pPeer = new Peer(p2pMyId, {
-                    debug: 1,
-                    config: {
-                        iceServers: P2P_ICE_SERVERS
-                    }
-                });
-
-                p2pPeer.on('open', (id) => {
-                    p2pMyId = id;
-                    renderP2PHostUI(true);
-                });
-
-                p2pPeer.on('connection', (conn) => {
-                    setupP2PConnection(conn, 'host');
-                });
-
-                p2pPeer.on('error', handlePeerError);
-
-                p2pPeer.on('disconnected', () => {
-                    renderP2PHostUI(false);
-                    if (p2pPeer && !p2pPeer.destroyed) {
-                        try { p2pPeer.reconnect(); } catch(e) {}
-                    }
-                });
-            } catch(e) {
-                console.error("Error iniciando PeerJS Host:", e);
-                updateP2PStatusUI('off');
-            }
+            initMQTTClient(p2pShortCode, 'host');
         }
 
         function copyP2PCode() {
-            const textToCopy = p2pShortCode || p2pMyId;
+            const textToCopy = p2pShortCode;
+            if (!textToCopy) return;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     toast('📋 Código P2P copiado al portapapeles.', false);
@@ -3467,169 +3443,45 @@ Check list,,20,,5,,15,,sfc
                 return;
             }
 
-            p2pCandidates = getCandidatePeerIds(rawTarget);
-            p2pCandidateIdx = 0;
-
-            if (!p2pCandidates.length) {
-                toast('Introduce un código de sala válido.', false);
+            const roomCode = getCleanRoomCode(rawTarget);
+            if (!roomCode || roomCode.length < 3) {
+                toast('Introduce un código de sala válido (ej: 4821).', false);
                 return;
             }
 
-            tryConnectCurrentCandidate();
-        }
-
-        function tryConnectCurrentCandidate() {
-            if (p2pCandidateIdx >= p2pCandidates.length) {
-                if (p2pConnectTimeout) {
-                    clearTimeout(p2pConnectTimeout);
-                    p2pConnectTimeout = null;
-                }
-                updateP2PStatusUI('off');
-                toast('⚠️ No se encontró al compañero. Verifica que tenga la sala abierta en su pantalla.', false);
-                return;
-            }
-
-            const targetId = p2pCandidates[p2pCandidateIdx];
-            const displayCode = targetId.replace('armario1315-', '').replace('armario-1315-', '').replace('armario-', '');
-
-            if (typeof Peer === 'undefined') {
-                toast('Librería WebRTC P2P no disponible.', false);
-                return;
-            }
+            p2pShortCode = roomCode;
+            updateP2PStatusUI('connecting');
+            toast(`Conectando con sala ${roomCode}...`, false);
 
             if (p2pConnectTimeout) clearTimeout(p2pConnectTimeout);
-            updateP2PStatusUI('connecting');
-            if (p2pCandidateIdx === 0) {
-                toast(`Buscando compañero (${displayCode})...`, false);
-            }
-
             p2pConnectTimeout = setTimeout(() => {
                 if (!p2pConnected) {
-                    toast('⚠️ Tiempo de espera agotado. Pulsa Reconectar en ambos teléfonos.', false);
+                    toast('⚠️ Tiempo de espera agotado. Verifica que el otro teléfono tenga la app abierta en "Crear Sala".', false);
                     updateP2PStatusUI('off');
                 }
-            }, 15000);
+            }, 12000);
 
-            const initiate = (peerInstance) => {
-                try {
-                    const conn = peerInstance.connect(targetId, {
-                        reliable: true,
-                        serialization: 'json'
-                    });
-                    setupP2PConnection(conn, 'client');
-                } catch(e) {
-                    console.warn("Fallo conectando candidato:", targetId, e);
-                    p2pCandidateIdx++;
-                    tryConnectCurrentCandidate();
-                }
-            };
-
-            // Asegurar que el socket Peer local esté listo
-            if (!p2pPeer || p2pPeer.destroyed || p2pPeer.disconnected) {
-                try {
-                    if (p2pPeer && !p2pPeer.destroyed) {
-                        try { p2pPeer.destroy(); } catch(e) {}
-                    }
-                    p2pPeer = new Peer({
-                        debug: 1,
-                        config: {
-                            iceServers: P2P_ICE_SERVERS
-                        }
-                    });
-                    p2pPeer.on('open', () => initiate(p2pPeer));
-                    p2pPeer.on('error', handlePeerError);
-                } catch(e) {
-                    if (p2pConnectTimeout) {
-                        clearTimeout(p2pConnectTimeout);
-                        p2pConnectTimeout = null;
-                    }
-                    toast('Fallo al iniciar cliente WebRTC.', false);
-                    updateP2PStatusUI('off');
-                }
-            } else if (p2pPeer.open) {
-                initiate(p2pPeer);
-            } else {
-                p2pPeer.once('open', () => initiate(p2pPeer));
-            }
+            initMQTTClient(roomCode, 'client');
         }
 
-        function setupP2PConnection(conn, role) {
-            if (!conn) return;
-            p2pConn = conn;
+        function handleP2PData(data, role) {
+            if (!data || !data.type) return;
 
-            let isEstablished = false;
-            const onEstablished = () => {
-                if (isEstablished) return;
-                isEstablished = true;
+            if (data.type === 'HANDSHAKE') {
                 p2pConnected = true;
                 if (p2pConnectTimeout) {
                     clearTimeout(p2pConnectTimeout);
                     p2pConnectTimeout = null;
                 }
-                stopP2PQRScan();
-
-                const un = appData.metadata.unidad || '1315';
-                const nom = appData.metadata.nombre || 'Dotación';
-
-                // Enviar Handshake inicial
-                try {
-                    conn.send({
-                        type: 'HANDSHAKE',
-                        unidad: un,
-                        nombre: nom,
-                        timestamp: Date.now()
-                    });
-                } catch(e) {}
-
-                updateP2PStatusUI('connected', `Enlazado con compañero (Unidad ${un})`);
-                hapticPulse();
-                toast('🟢 ¡Conectado en vivo con tu compañero!', false);
-
-                // Si actuamos de cliente, solicitamos el inventario actual del host
-                if (role === 'client') {
-                    setTimeout(() => requestFullP2PSync(), 350);
-                } else if (role === 'host') {
-                    // Si somos el host, enviamos nuestro inventario completo inmediatamente
-                    setTimeout(() => sendFullP2PSync(true), 350);
-                }
-            };
-
-            if (conn.open) {
-                onEstablished();
-            } else {
-                conn.on('open', onEstablished);
-            }
-
-            conn.on('data', (data) => {
-                handleP2PData(data);
-            });
-
-            conn.on('close', () => {
-                p2pConnected = false;
-                p2pConn = null;
-                updateP2PStatusUI('off');
-                toast('⚠️ Conexión P2P cerrada por el compañero.', false);
-            });
-
-            conn.on('error', (err) => {
-                console.warn("P2P Conn error:", err);
-                if (p2pConnectTimeout) {
-                    clearTimeout(p2pConnectTimeout);
-                    p2pConnectTimeout = null;
-                }
-                toast('Aviso en canal P2P.', false);
-                p2pConnected = false;
-                updateP2PStatusUI('off');
-            });
-        }
-
-        function handleP2PData(data) {
-            if (!data || !data.type) return;
-
-            if (data.type === 'HANDSHAKE') {
                 const peerDesc = `Enlazado con ${data.nombre || 'Compañero'} (Unidad ${data.unidad || '1315'})`;
                 updateP2PStatusUI('connected', peerDesc);
                 hapticPulse();
+                toast(`🟢 ${peerDesc}`, false);
+
+                // Si somos el Host y el cliente nos saluda, le enviamos el inventario completo
+                if (role === 'host' || data.role === 'client') {
+                    setTimeout(() => sendFullP2PSync(true), 250);
+                }
                 return;
             }
 
@@ -3680,7 +3532,7 @@ Check list,,20,,5,,15,,sfc
                     renderAll();
                     isRemoteUpdate = false;
                     hapticPulse();
-                    toast(`⚡ Inventario sincronizado de ${data.sender || 'compañero'}.`, false);
+                    toast(`⚡ Inventario sincronizado con el compañero.`, false);
                 }
                 return;
             }
@@ -3689,51 +3541,44 @@ Check list,,20,,5,,15,,sfc
                 sendFullP2PSync(true);
                 return;
             }
+
+            if (data.type === 'DISCONNECT') {
+                p2pConnected = false;
+                updateP2PStatusUI('off');
+                toast('⚠️ Conexión cerrada por el compañero.', false);
+                return;
+            }
         }
 
         function broadcastP2PUpdate(type, payload = {}) {
-            if (!p2pConnected || !p2pConn || !p2pAutoSync || isRemoteUpdate) return;
-            try {
-                p2pConn.send({
-                    type,
-                    ...payload,
-                    sender: appData.metadata.nombre || 'Pareja',
-                    timestamp: Date.now()
-                });
-            } catch(e) {
-                console.warn("Error al emitir por WebRTC P2P:", e);
-            }
+            if (!p2pConnected || !p2pAutoSync || isRemoteUpdate) return;
+            sendMQTTMessage({
+                type,
+                ...payload,
+                sender: appData.metadata.nombre || 'Pareja'
+            });
         }
 
         function sendFullP2PSync(isSilent = false) {
-            if (!p2pConnected || !p2pConn) {
-                if (!isSilent) toast('No hay conexión P2P activa.', false);
+            if (!p2pConnected) {
+                if (!isSilent) toast('No hay conexión activa.', false);
                 return;
             }
-            try {
-                p2pConn.send({
-                    type: 'FULL_SYNC',
-                    appData,
-                    sender: appData.metadata.nombre || 'Pareja',
-                    timestamp: Date.now()
-                });
-                if (!isSilent) toast('⚡ Inventario completo transmitido al compañero.', false);
-            } catch(e) {
-                if (!isSilent) toast('Error al transmitir datos.', false);
-            }
+            sendMQTTMessage({
+                type: 'FULL_SYNC',
+                appData,
+                sender: appData.metadata.nombre || 'Pareja'
+            });
+            if (!isSilent) toast('⚡ Inventario completo transmitido al compañero.', false);
         }
 
         function requestFullP2PSync() {
-            if (!p2pConnected || !p2pConn) {
-                toast('No hay conexión P2P activa.', false);
+            if (!p2pConnected) {
+                toast('No hay conexión activa.', false);
                 return;
             }
-            try {
-                p2pConn.send({ type: 'REQUEST_FULL_SYNC' });
-                toast('📥 Solicitando inventario al compañero...', false);
-            } catch(e) {
-                toast('Error al solicitar datos.', false);
-            }
+            sendMQTTMessage({ type: 'REQUEST_FULL_SYNC' });
+            toast('📥 Solicitando inventario al compañero...', false);
         }
 
         function disconnectP2P() {
@@ -3741,18 +3586,15 @@ Check list,,20,,5,,15,,sfc
                 clearTimeout(p2pConnectTimeout);
                 p2pConnectTimeout = null;
             }
-            if (p2pConn) {
-                try { p2pConn.close(); } catch(e) {}
-                p2pConn = null;
-            }
-            if (p2pPeer && !p2pPeer.destroyed) {
-                try { p2pPeer.destroy(); } catch(e) {}
-                p2pPeer = null;
+            sendMQTTMessage({ type: 'DISCONNECT' });
+            if (mqttClient) {
+                try { mqttClient.disconnect(); } catch(e) {}
+                mqttClient = null;
             }
             p2pConnected = false;
             stopP2PQRScan();
             updateP2PStatusUI('off');
-            toast('Conexión P2P finalizada.', false);
+            toast('Conexión finalizada.', false);
         }
 
         function toggleP2PAutoSync(val) {
