@@ -806,6 +806,9 @@
                     <button type="button" class="btn btn--ghost" onclick="openHelpModal()" style="height:44px;font-size:13.5px;">
                         📖 Ver Guía & Leyenda
                     </button>
+                    <button type="button" class="btn btn--ghost" onclick="forceUpdateApp()" style="height:44px;font-size:13.5px;color:var(--primary);border-color:var(--primary);" title="Elimina la versión en caché del navegador y recarga la última versión">
+                        🔄 Forzar Actualización (v2.2)
+                    </button>
                 </div>
             </section>
 
@@ -3842,6 +3845,22 @@ Check list,,20,,5,,15,,sfc
         window.sendFullP2PSync = sendFullP2PSync;
         window.requestFullP2PSync = requestFullP2PSync;
         window.disconnectP2P = disconnectP2P;
+        window.forceUpdateApp = async function() {
+            toast('🧹 Limpiando caché y actualizando a la última versión...', false);
+            try {
+                if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (let r of regs) await r.unregister();
+                }
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    for (let k of keys) await caches.delete(k);
+                }
+            } catch(e) {}
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 600);
+        };
 
         // Arranque
         loadData();
@@ -3855,7 +3874,19 @@ Check list,,20,,5,,15,,sfc
         initPWAInstall();
 
         if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-            navigator.serviceWorker.register('./sw.js').catch(() => {});
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    if (installingWorker) {
+                        installingWorker.onstatechange = () => {
+                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                toast('🚀 Nueva versión disponible. Recargando...', false);
+                                setTimeout(() => window.location.reload(), 1200);
+                            }
+                        };
+                    }
+                };
+            }).catch(() => {});
         }
 
         document.getElementById('today').textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
