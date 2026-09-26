@@ -1155,11 +1155,12 @@
                 <div id="p2p-panel-host">
                     <div style="text-align:center;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:14px;padding:16px;margin-bottom:12px;">
                         <div style="font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px;">Tu Código de Conexión</div>
-                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">
+                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                             <span id="p2p-my-code" style="font-size:28px;font-weight:800;letter-spacing:3px;color:var(--primary);font-family:monospace;">----</span>
-                            <button type="button" class="btn btn--ghost" style="padding:4px 10px;height:34px;font-size:12px;" onclick="copyP2PCode()" title="Copiar código">📋 Copiar</button>
+                            <button type="button" class="btn btn--ghost" style="padding:4px 10px;height:34px;font-size:12px;" onclick="copyP2PCode()" title="Copiar ID completo">📋 Copiar</button>
                             <button type="button" class="btn btn--ghost" style="padding:4px 10px;height:34px;font-size:12px;" onclick="startP2PHost(true)" title="Crear nueva sala / Reconectar">🔄 Nueva</button>
                         </div>
+                        <div id="p2p-my-token" style="font-family:monospace;font-size:12px;letter-spacing:1px;color:var(--text-soft);word-break:break-all;margin-bottom:8px;">----</div>
                         <div style="font-size:12px;color:var(--text-soft);" id="p2p-host-status">
                             ⏳ Registrando sala P2P...
                         </div>
@@ -1178,7 +1179,7 @@
                     <div class="form-field" style="margin-bottom:12px;">
                         <label>Código o ID de sala de tu compañero:</label>
                         <div style="display:flex;gap:8px;">
-                            <input type="text" id="p2p-join-input" placeholder="Ej: 4821 o ID completo" style="font-weight:700;font-size:16px;text-transform:uppercase;">
+                            <input type="text" id="p2p-join-input" placeholder="ID completo de la sala (ej: 4821-K7M2QP9XR4TB)" style="font-weight:700;font-size:16px;text-transform:uppercase;">
                             <button type="button" class="btn btn--primary" style="white-space:nowrap;padding:0 16px;" onclick="connectP2PFromInput()">
                                 ⚡ Conectar
                             </button>
@@ -3412,21 +3413,123 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
         let p2pConnectTimeout = null;
         let p2pClientId = 'svb_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
         let p2pCurrentTopic = '';
-
-        function getCleanRoomCode(input) {
-            if (!input) return '';
-            let val = String(input).trim();
-            if (val.includes('#p2p=')) {
-                val = val.split('#p2p=')[1].trim();
-            }
-            val = val.replace('armario1315-', '').replace('armario-1315-', '').replace('armario-', '');
-            const cleanDigits = val.replace(/[^0-9]/g, '');
-            if (cleanDigits.length === 4) return cleanDigits;
-            return val.replace(/[^a-zA-Z0-9_-]/g, '');
-        }
+        let p2pRoomSecret = '';
+        let p2pSendQueue = Promise.resolve();
 
         function generateP2PShortCode() {
             return Math.floor(1000 + Math.random() * 9000).toString();
+        }
+
+        // ============================================================
+        //  SEGURIDAD DE LA SALA P2P
+        //  El topic lleva un fragmento del secreto para que no sea
+        //  adivinable con un suscripción comodín, y todo el tráfico
+        //  va cifrado con AES-GCM derivado del secreto de la sala.
+        // ============================================================
+        const P2P_SECRET_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const P2P_SECRET_LENGTH = 20;
+        const P2P_PBKDF2_ITERATIONS = 150000;
+
+        function generateP2PSecret() {
+            const bytes = new Uint8Array(P2P_SECRET_LENGTH);
+            crypto.getRandomValues(bytes);
+            let out = '';
+            for (let i = 0; i < P2P_SECRET_LENGTH; i++) {
+                out += P2P_SECRET_ALPHABET[bytes[i] % P2P_SECRET_ALPHABET.length];
+            }
+            return out;
+        }
+
+        function getP2PSecret() {
+            const KEY = 'p2p_room_secret_v1';
+            try {
+                let secret = localStorage.getItem(KEY);
+                if (!secret || secret.length < 12) {
+                    secret = generateP2PSecret();
+                    localStorage.setItem(KEY, secret);
+                }
+                return secret;
+            } catch (e) {
+                return generateP2PSecret();
+            }
+        }
+
+        function getP2PToken(code, secret) {
+            return `${code}-${secret}`;
+        }
+
+        function parseP2PToken(input) {
+            if (!input) return null;
+            let val = String(input).trim();
+            if (val.includes('#p2p=')) val = val.split('#p2p=')[1].trim();
+            if (val.startsWith('armario1315-')) val = val.slice('armario1315-'.length);
+            else if (val.startsWith('armario-1315-')) val = val.slice('armario-1315-'.length);
+            else if (val.startsWith('armario-')) val = val.slice('armario-'.length);
+
+            const match = val.match(/^(\d{4})[\s\-_]?([A-Za-z0-9]{8,64})?$/);
+            if (!match) return null;
+            return {
+                code: match[1],
+                secret: (match[2] || '').toUpperCase()
+            };
+        }
+
+        function deriveP2PKey(secret, code) {
+            const enc = new TextEncoder();
+            return crypto.subtle.importKey(
+                'raw',
+                enc.encode(secret),
+                'PBKDF2',
+                false,
+                ['deriveKey']
+            ).then(baseKey => crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: enc.encode(`svb1315:${code}`),
+                    iterations: P2P_PBKDF2_ITERATIONS,
+                    hash: 'SHA-256'
+                },
+                baseKey,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            ));
+        }
+
+        function bufferToB64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let bin = '';
+            for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+            return btoa(bin);
+        }
+
+        function b64ToBuffer(b64) {
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return bytes;
+        }
+
+        async function encryptP2PPayload(secret, code, plainObject) {
+            const key = await deriveP2PKey(secret, code);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encoded = new TextEncoder().encode(JSON.stringify(plainObject));
+            const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+            return JSON.stringify({ v: 1, iv: bufferToB64(iv), ct: bufferToB64(cipher) });
+        }
+
+        async function decryptP2PPayload(secret, code, rawString) {
+            const envelope = JSON.parse(rawString);
+            if (!envelope || envelope.v !== 1 || !envelope.iv || !envelope.ct) {
+                throw new Error('formato de sobre no reconocido');
+            }
+            const key = await deriveP2PKey(secret, code);
+            const plain = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: b64ToBuffer(envelope.iv) },
+                key,
+                b64ToBuffer(envelope.ct)
+            );
+            return JSON.parse(new TextDecoder().decode(plain));
         }
 
         function updateP2PStatusUI(state, extraText = '') {
@@ -3527,13 +3630,15 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
 
         function renderP2PHostUI(isOnline = false) {
             const codeEl = document.getElementById('p2p-my-code');
+            const tokenEl = document.getElementById('p2p-my-token');
             const statusEl = document.getElementById('p2p-host-status');
             const qrcEl = document.getElementById('p2p-qrcode-canvas');
 
             if (codeEl) codeEl.textContent = p2pShortCode || '----';
+            if (tokenEl) tokenEl.textContent = p2pShortCode ? getP2PToken(p2pShortCode, p2pRoomSecret) : '----';
             if (statusEl) {
                 if (isOnline) {
-                    statusEl.innerHTML = '🟢 <strong style="color:var(--ok);">Sala lista y en línea</strong><br><span style="font-size:11.5px;color:var(--text-soft);">Tu compañero ya puede introducir el código <b>' + p2pShortCode + '</b> o escanear el QR.</span>';
+                    statusEl.innerHTML = '🟢 <strong style="color:var(--ok);">Sala lista y en línea</strong><br><span style="font-size:11.5px;color:var(--text-soft);">Tu compañero ya puede introducir el código <b>ID completo</b> de arriba o que escanee el QR. El tráfico va cifrado.</span>';
                 } else {
                     statusEl.innerHTML = '⏳ <span style="color:var(--warn);">Conectando con el servidor en tiempo real...</span>';
                 }
@@ -3542,7 +3647,8 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
             if (qrcEl && p2pShortCode) {
                 qrcEl.innerHTML = '';
                 const baseUrl = window.location.href.split('#')[0];
-                const p2pUrl = `${baseUrl}#p2p=${p2pShortCode}`;
+                const p2pToken = getP2PToken(p2pShortCode, p2pRoomSecret);
+                const p2pUrl = `${baseUrl}#p2p=${p2pToken}`;
 
                 let generated = false;
                 try {
@@ -3584,8 +3690,8 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
                 mqttClient = null;
             }
 
-            p2pCurrentTopic = `svb1315/p2p/${roomCode}`;
-            const broker = P2P_MQTT_BROKERS[0]; // Broker primario EMQX
+            p2pCurrentTopic = `svb1315/p2p/${roomCode}/${p2pRoomSecret.substring(0, 12)}`;
+            const broker = P2P_MQTT_BROKERS[mqttBrokerIndex] || P2P_MQTT_BROKERS[0];
             p2pClientId = 'svb_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
 
             try {
@@ -3603,13 +3709,14 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
                 };
 
                 mqttClient.onMessageArrived = (message) => {
-                    try {
-                        const payload = JSON.parse(message.payloadString);
-                        if (payload.senderId === p2pClientId) return;
-                        handleP2PData(payload, role);
-                    } catch(e) {
-                        console.error("Error parseando mensaje MQTT:", e);
-                    }
+                    decryptP2PPayload(p2pRoomSecret, roomCode, message.payloadString)
+                        .then(payload => {
+                            if (!payload || payload.senderId === p2pClientId) return;
+                            handleP2PData(payload, role);
+                        })
+                        .catch(() => {
+                            // Sobres que no podemos descifrar: los ignoramos.
+                        });
                 };
 
                 const connectOptions = {
@@ -3659,19 +3766,28 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
 
         function sendMQTTMessage(data) {
             if (!mqttClient || !mqttClient.isConnected() || !p2pCurrentTopic) return;
-            try {
-                const packet = {
-                    ...data,
-                    senderId: p2pClientId,
-                    timestamp: Date.now()
-                };
-                const msg = new Paho.MQTT.Message(JSON.stringify(packet));
-                msg.destinationName = p2pCurrentTopic;
-                msg.qos = 0;
-                mqttClient.send(msg);
-            } catch(e) {
-                console.warn("Error enviando por MQTT:", e);
-            }
+            if (!p2pRoomSecret) return;
+
+            const packet = {
+                ...data,
+                senderId: p2pClientId,
+                timestamp: Date.now()
+            };
+            const code = p2pShortCode;
+
+            // Encadenamos los envíos para no reordenar los paquetes.
+            p2pSendQueue = p2pSendQueue
+                .then(() => encryptP2PPayload(p2pRoomSecret, code, packet))
+                .then((cipherText) => {
+                    if (!mqttClient || !mqttClient.isConnected()) return;
+                    const msg = new Paho.MQTT.Message(cipherText);
+                    msg.destinationName = p2pCurrentTopic;
+                    msg.qos = 0;
+                    mqttClient.send(msg);
+                })
+                .catch(e => {
+                    console.warn("Error enviando por MQTT:", e);
+                });
         }
 
         function startP2PHost(forceNew = false) {
@@ -3683,6 +3799,7 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
             if (!p2pShortCode || forceNew) {
                 p2pShortCode = generateP2PShortCode();
             }
+            p2pRoomSecret = getP2PSecret();
 
             updateP2PStatusUI('connecting');
             renderP2PHostUI(false);
@@ -3691,8 +3808,8 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
         }
 
         function copyP2PCode() {
-            const textToCopy = p2pShortCode;
-            if (!textToCopy) return;
+            if (!p2pShortCode) return;
+            const textToCopy = getP2PToken(p2pShortCode, p2pRoomSecret);
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     toast('📋 Código P2P copiado al portapapeles.', false);
@@ -3720,15 +3837,21 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
                 return;
             }
 
-            const roomCode = getCleanRoomCode(rawTarget);
-            if (!roomCode || roomCode.length < 3) {
-                toast('Introduce un código de sala válido (ej: 4821).', false);
+            const token = parseP2PToken(rawTarget);
+            if (!token) {
+                toast('El código de sala no es válido. Pide el ID completo al anfitrión.', false);
                 return;
             }
 
-            p2pShortCode = roomCode;
+            if (!token.secret) {
+                toast('Falta la clave de la sala. Necesitas el ID completo (ej: 4821-ABCDEF...).', false);
+                return;
+            }
+
+            p2pShortCode = token.code;
+            p2pRoomSecret = token.secret;
             updateP2PStatusUI('connecting');
-            toast(`Conectando con sala ${roomCode}...`, false);
+            toast(`Conectando con sala ${token.code}...`, false);
 
             if (p2pConnectTimeout) clearTimeout(p2pConnectTimeout);
             p2pConnectTimeout = setTimeout(() => {
@@ -3738,7 +3861,7 @@ MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
                 }
             }, 12000);
 
-            initMQTTClient(roomCode, 'client');
+            initMQTTClient(token.code, 'client');
         }
 
         function handleP2PData(data, role) {
