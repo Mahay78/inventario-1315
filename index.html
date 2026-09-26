@@ -1255,7 +1255,7 @@
             <div style="padding:8px 14px;background:var(--surface-3);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;">
                 <div style="display:flex;align-items:center;gap:6px;min-width:0;">
                     <span style="color:var(--text-faint);white-space:nowrap;">👤 Hablas como:</span>
-                    <strong id="chat-my-name-display" style="color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Fran</strong>
+                    <strong id="chat-my-name-display" style="color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Usuario</strong>
                 </div>
                 <button type="button" class="btn btn--ghost" onclick="promptChangeChatName()" style="height:26px;padding:0 8px;font-size:11px;border-radius:6px;flex:none;white-space:nowrap;">
                     ✏️ Cambiar Nombre
@@ -1341,90 +1341,9 @@
         // ============================================================
         //  DATOS BASE DEL ARMARIO · Unidad 1315
         // ============================================================
-        const csvData = `VERSION,1786808564024
-FECHA,2026-06-30,UNIDAD,1315,NOMBRE,,Fran/ Roberto ,,
-STOCK DE MATERIAL SOPORTE VITAL BASICO,,,,,,,,
-MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD
-CURAS,,,,,,,,
-ALCOHOL,,1,,1,,0,,09_29
-AGUA OXIGENADA,,1,,1,,0,,Nov-29
-GASAS ESTERIL,,50,,50,,0,,Apr-28
-COMPRESAS ESTERIL,,50,,28,,22,,Dec-26
-VENDA CREPE  15X 10,,10,,9,,1,,Dec-26
-VENDA CREPE 10 X 5,,10,,9,,1,,Aug-30
-VENDA CREPE 5X4,,10,,10,,0,,Aug-30
-VENDA GASAS 5X5,,1,,1,,0,,sfc
-VENDA GASAS 10X10,,1,,1,,0,,sfc
-SUERO DE IRRIG 250ML,,3,,3,,0,,Dec-26
-SUERO DE IRRIG 100ML,,3,,2,,1,,Dec-26
-SUERO DE IRRIG 500ML,,3,,3,,0,,2027-07-30
-ESPARATRAPO RECORTABLE,,1,,1,,0,,11/1/2026
-CIRCULATORIO,,,,,,,,
-ELECTRODO DESA ADU,,3,,3,,0,,May-27
-ELECTRODO DESA PED,,1,,1,,0,,Nov-26
-RESERVORIO ADULT,,10,,10,,0,,4/14/2029
-RESERVORIO PED,,1,,1,,0,,Aug-28
-NEBULIZADOR ADULT,,3,,3,,0,,2029-02-17
-NEBULIZADOR PED,,1,,1,,0,,1/7/2029
-GAFAS NASALES ADULT,,10,,9,,1,,Sep-29
-GAFAS NASALES PED,,3,,3,,0,,Jan-27
-VENTIMASK ADULT,,10,,10,,0,,1/1/2027
-VENTIMASK PED,,3,,3,,0,,Jan-27
-ALARGADERA,,3,,3,,0,,2029-04-12
-FILTROS  AMBU,,4,,4,,0,,12/28/2028
-CANULA DE GUEDEL 00,,1,,1,,0,,Jun-29
-CANULA DE GUEDEL 0,,1,,1,,0,,Jun-29
-CANULA DE GUEDEL 1,,1,,1,,0,,Jul-29
-CANULA DE GUEDEL 2,,1,,1,,0,,Jul-29
-CANULA DE GUEDEL 3,,5,,5,,0,,3/1/2027
-CANULA DE GUEDEL 4,,5,,5,,0,,3/1/2027
-CANULA DE GUEDEL 5,,5,,5,,0,,5/1/2027
-DIVERSOS,,,,,,,,
-BOLSA DE VOMITOS,,15,,15,,0,,Sfc
-TIRA DE GLUCOMETRO,,3,,3,,0,,3/7/2027
-LANCETAS,,50,,44,,6,,Sfc
-MANTA TERMICA,,3,,3,,0,,Dec-28
-CONO TIMPANICOS,,1,,0,,1,,sfc
-SONDA DE ASP 1 DE CADA,,1,,1,,0,,2026-11-13
-RASURADORA,,1,,2,,-1,,Sfc
-EMPAPADORES,,12,,7,,5,,Sfc
-EPIS,,,,,,,,
-BATAS,,50,,50,,0,,sfc
-MASCARILLA FFP3,,2,,2,,0,,Sfc
-MASCARILLA QUIRURGICAS,,50,,50,,0,,Sfc
-MASCARILLA FFP2,,30,,29,,1,,Jan-29
-BUZOS XXL,,5,,5,,0,,Sfc
-BUZOSXL,,5,,5,,0,,sfc
-BUZOS L,,5,,5,,0,,sfc
-BUZOS M,,5,,5,,0,,sfc
-BUZOS S,,5,,5,,0,,sfc
-GUANTES XL,,4,,2,,2,,Oct-28
-GUANTES L,,4,,3,,1,,Oct-28
-GUANTES M,,4,,4,,0,,May-27
-GUANTES S,,4,,4,,0,,12/11/2026
-ARTICULOS VARIOS,,,,,,,,
-ROLLO IMPRESORA,,2,,2,,0,,sfc
-GLUCOSA GEL,,3,,0,,3,,7/15/2026
-BATEA,,4,,4,,0,,Sfc
-GEL HIDROALCOLICO,,2,,2,,0,,Apr-28
-TUBULADURA ASP,,2,,2,,0,,Sfc
-VASOS DE ASPIRADOR,,2,,2,,0,,Sfc
-PARTE DE ASISTENCIA,,2,,2,,0,,Sfc
-LIMPIEZA,,,,,,,,
-LEJIA,,3,,3,,0,,sfc
-PAPEL HIGENICO,,6,,3,,3,,sfc
-PAPEL DISPENSADOR,,1,,0,,1,,sfc
-JABON DE MANO,,1,,0,,1,,sfc
-JABON LAVAVAJILLAS,,1,,0,,1,,sfc
-BOLSAS NEGRA PEQUE A,,2,,2,,0,,sfc
-BOLSA AMARILLA PEQUE A,,2,,1,,1,,sfc
-BOLSA AMARILLA GRANDE,,1,,1,,0,,sfc
-OXIVIR,,1,,0,,1,,sfc
-no,,,,,,,,
-biofresh,,1,,0,,1,,sfc
-Papelería,,,,,,,,
-Check list,,20,,5,,15,,sfc
-`;
+        const csvData = `VERSION,1
+FECHA,,UNIDAD,1315,NOMBRE,,,
+MATERIAL,,LO QUE TENGO QUE TENER,,CUANTO TENGO,,LO QUE PIDO,,CADUCIDAD`;
 
         // ============================================================
         //  ESTADO Y UTILIDADES
@@ -4045,7 +3964,7 @@ Check list,,20,,5,,15,,sfc
 
         function promptChangeChatName() {
             const current = getMyChatName();
-            const res = prompt('Introduce tu nombre o rol en la dotación (ej: Fran, Roberto, Conductor, DUE):', current);
+            const res = prompt('Introduce tu nombre o rol en la dotación (ej: Conductor, DUE, Terrorista):', current);
             if (res !== null && res.trim()) {
                 setMyChatName(res.trim());
             }

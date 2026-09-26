@@ -6,3 +6,6 @@ android/
 *.apk
 dist-apk/
 inventario_app_1315 (5) (1).html
+release.keystore
+*.jks
+*.keystore
